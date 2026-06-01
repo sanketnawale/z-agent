@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Z-Agent | USS File System</title>
+
+    <style>
+        :root {
+            --bg: #030712;
+            --panel: rgba(10, 18, 32, 0.94);
+            --panel2: rgba(15, 27, 48, 0.96);
+            --line: rgba(255, 255, 255, 0.08);
+            --cyan: #56d7ff;
+            --orange: #ff9f43;
+            --green: #46d38a;
+            --red: #ff6b76;
+            --text: #e8f4ff;
+            --muted: #91a8c2;
+            --shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Inter, Arial, sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(86, 215, 255, 0.10), transparent 28%),
+                radial-gradient(circle at top right, rgba(255, 159, 67, 0.08), transparent 26%),
+                linear-gradient(180deg, #030712 0%, #07101f 100%);
+            min-height: 100vh;
+            padding: 22px;
+        }
+
+        .wrap {
+            max-width: 1500px;
+            margin: 0 auto;
+        }
+
+        .topbar,
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 24px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(16px);
+        }
+
+        .topbar {
+            padding: 18px 22px;
+            margin-bottom: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .brand small {
+            display: block;
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .18em;
+            margin-bottom: 5px;
+        }
+
+        .brand strong {
+            font-size: 27px;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            min-height: 42px;
+            padding: 0 16px;
+            border-radius: 999px;
+            border: 1px solid rgba(86, 215, 255, .22);
+            color: var(--text);
+            background: rgba(255, 255, 255, .035);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+        }
+
+        .btn.primary {
+            background: linear-gradient(135deg, var(--orange), #ffd08f);
+            color: #07101f;
+            border: 0;
+        }
+
+        .hero {
+            padding: 24px;
+            margin-bottom: 18px;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(86, 215, 255, .10);
+            border: 1px solid rgba(86, 215, 255, .22);
+            color: var(--cyan);
+            text-transform: uppercase;
+            letter-spacing: .16em;
+            font-size: 12px;
+            margin-bottom: 12px;
+            font-weight: 800;
+        }
+
+        h1 {
+            margin: 0 0 10px;
+            font-size: clamp(2rem, 3vw, 3.2rem);
+            line-height: 1.05;
+        }
+
+        .sub {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.7;
+            max-width: 80ch;
+        }
+
+        .path-card {
+            padding: 18px;
+            margin-bottom: 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .label {
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .16em;
+            margin-bottom: 8px;
+            font-weight: 800;
+        }
+
+        .pathbox {
+            font-family: Consolas, monospace;
+            background: #101b2d;
+            border: 1px solid rgba(255, 255, 255, .07);
+            color: #dff5ff;
+            padding: 12px 14px;
+            border-radius: 14px;
+            word-break: break-all;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 430px minmax(0, 1fr);
+            gap: 18px;
+        }
+
+        .panel {
+            padding: 18px;
+        }
+
+        .panel-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .panel-title {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .count {
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .entry-list {
+            display: grid;
+            gap: 9px;
+            max-height: 72vh;
+            overflow: auto;
+            padding-right: 4px;
+        }
+
+        .entry {
+            display: grid;
+            grid-template-columns: 34px 1fr auto;
+            gap: 10px;
+            align-items: center;
+            padding: 12px 13px;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, .035);
+            border: 1px solid rgba(255, 255, 255, .065);
+            color: var(--text);
+            text-decoration: none;
+            transition: .15s ease;
+        }
+
+        .entry:hover {
+            transform: translateY(-1px);
+            background: rgba(86, 215, 255, .085);
+            border-color: rgba(86, 215, 255, .22);
+        }
+
+        .icon {
+            width: 34px;
+            height: 34px;
+            display: grid;
+            place-items: center;
+            border-radius: 12px;
+            background: rgba(86, 215, 255, .10);
+            font-size: 18px;
+        }
+
+        .entry-name {
+            font-weight: 850;
+            word-break: break-word;
+        }
+
+        .meta {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 4px;
+            font-family: Consolas, monospace;
+        }
+
+        .tag {
+            font-size: 11px;
+            font-weight: 850;
+            padding: 6px 9px;
+            border-radius: 999px;
+            color: #dff5ff;
+            background: rgba(86, 215, 255, .10);
+            border: 1px solid rgba(86, 215, 255, .18);
+            white-space: nowrap;
+        }
+
+        .tag.dir {
+            color: #bdf7d3;
+            background: rgba(70, 211, 138, .10);
+            border-color: rgba(70, 211, 138, .20);
+        }
+
+        .tag.file {
+            color: #ffe3b8;
+            background: rgba(255, 159, 67, .10);
+            border-color: rgba(255, 159, 67, .20);
+        }
+
+        .preview {
+            min-height: 72vh;
+        }
+
+        .preview-empty {
+            height: 60vh;
+            display: grid;
+            place-items: center;
+            text-align: center;
+            color: var(--muted);
+            border: 1px dashed rgba(255, 255, 255, .13);
+            border-radius: 20px;
+            background: rgba(255, 255, 255, .025);
+            padding: 22px;
+        }
+
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+            line-height: 1.68;
+            background: #101b2d;
+            border: 1px solid rgba(255, 255, 255, .07);
+            color: #dff5ff;
+            padding: 18px;
+            border-radius: 18px;
+            overflow: auto;
+            max-height: 72vh;
+            font-family: Consolas, monospace;
+            font-size: 13px;
+        }
+
+        .error {
+            border-color: rgba(255, 107, 118, .35);
+            background: rgba(255, 107, 118, .08);
+            padding: 18px;
+            margin-bottom: 18px;
+        }
+
+        .breadcrumb {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .crumb {
+            color: var(--cyan);
+            text-decoration: none;
+            font-family: Consolas, monospace;
+            font-size: 13px;
+        }
+
+        @media (max-width: 1050px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .entry-list,
+            .preview,
+            pre {
+                max-height: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="wrap">
+
+    <div class="topbar">
+        <div class="brand">
+            <small>IBM Z Workspace</small>
+            <strong>USS File System</strong>
+        </div>
+
+        <div class="actions">
+            <a class="btn" href="/jobs/">Jobs</a>
+            <a class="btn" href="/explorer/">Datasets</a>
+            <a class="btn primary" href="/uss/">My USS</a>
+            <a class="btn" href="/uss/?path=/">System Root</a>
+            <a class="btn" href="/logout/">Logout</a>
+        </div>
+    </div>
+
+    <section class="card hero">
+        <span class="eyebrow">Unix System Services</span>
+        <h1>Browse z/OS USS files like a modern file explorer.</h1>
+        <p class="sub">
+            Open folders, inspect permissions, and preview readable USS files directly from your Z-Agent console.
+        </p>
+    </section>
+
+    <section class="card path-card">
+        <div>
+            <div class="label">Current path</div>
+            <div class="pathbox">{{ path }}</div>
+        </div>
+
+        <div class="breadcrumb">
+            <a class="crumb" href="/uss/">My USS</a>
+            {% if path != home_path %}
+                <span class="muted">→</span>
+                <span class="crumb">{{ path }}</span>
+            {% endif %}
+        </div>
+    </section>
+
+    {% if error %}
+        <section class="card error">
+            <strong>Error</strong>
+            <pre>{{ error }}</pre>
+        </section>
+    {% endif %}
+
+    <div class="layout">
+
+        <section class="card panel">
+            <div class="panel-head">
+                <h2 class="panel-title">Folders and files</h2>
+                <div class="count">{{ entries|length }} items</div>
+            </div>
+
+            <div class="entry-list">
+
+                {% if path != home_path %}
+                    <a class="entry" href="/uss/">
+                        <div class="icon">🏠</div>
+                        <div>
+                            <div class="entry-name">My USS Home</div>
+                            <div class="meta">Go back to {{ home_path }}</div>
+                        </div>
+                        <div class="tag dir">HOME</div>
+                    </a>
+                {% endif %}
+
+                {% if path != "/" %}
+                    <a class="entry" href="/uss/?path=/">
+                        <div class="icon">🌐</div>
+                        <div>
+                            <div class="entry-name">System Root</div>
+                            <div class="meta">Open /</div>
+                        </div>
+                        <div class="tag dir">ROOT</div>
+                    </a>
+                {% endif %}
+
+                {% for entry in entries %}
+
+                    {% if entry.type == "directory" %}
+                        <a class="entry" href="/uss/?path={{ entry.full_path|urlencode }}">
+                            <div class="icon">📁</div>
+                            <div>
+                                <div class="entry-name">{{ entry.name }}</div>
+                                <div class="meta">{{ entry.permissions }} · {{ entry.owner }}</div>
+                            </div>
+                            <div class="tag dir">DIR</div>
+                        </a>
+
+                    {% elif entry.type == "link" %}
+                        <a class="entry" href="/uss/?path={{ entry.full_path|urlencode }}">
+                            <div class="icon">🔗</div>
+                            <div>
+                                <div class="entry-name">{{ entry.name }}</div>
+                                <div class="meta">{{ entry.permissions }} · {{ entry.owner }}</div>
+                            </div>
+                            <div class="tag">LINK</div>
+                        </a>
+
+                    {% else %}
+                        <a class="entry" href="/uss/?path={{ path|urlencode }}&file={{ entry.full_path|urlencode }}">
+                            <div class="icon">📄</div>
+                            <div>
+                                <div class="entry-name">{{ entry.name }}</div>
+                                <div class="meta">{{ entry.permissions }} · {{ entry.owner }}</div>
+                            </div>
+                            <div class="tag file">FILE</div>
+                        </a>
+                    {% endif %}
+
+                {% empty %}
+                    <div class="preview-empty">
+                        <div>
+                            <h3>No entries found</h3>
+                            <p>This USS path is empty or cannot be listed.</p>
+                        </div>
+                    </div>
+                {% endfor %}
+
+            </div>
+        </section>
+
+        <section class="card panel preview">
+            <div class="panel-head">
+                <h2 class="panel-title">Preview</h2>
+                {% if file_path %}
+                    <div class="count">{{ file_path }}</div>
+                {% endif %}
+            </div>
+
+            {% if file_path %}
+                {% if file_content %}
+                    <pre>{{ file_content }}</pre>
+                {% else %}
+                    <div class="preview-empty">
+                        <div>
+                            <h3>File opened, but no text content was returned</h3>
+                            <p>The file may be empty, binary, protected, or not readable as plain text.</p>
+                        </div>
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="preview-empty">
+                    <div>
+                        <h3>Select a file</h3>
+                        <p>Click any file on the left to preview its USS content here.</p>
+                    </div>
+                </div>
+            {% endif %}
+        </section>
+
+    </div>
+
+</div>
+</body>
+</html>

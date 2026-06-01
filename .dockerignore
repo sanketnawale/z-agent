@@ -1,0 +1,14 @@
+venv_linux
+__pycache__
+*.pyc
+*.pyo
+*.sqlite3
+db.sqlite3
+.git
+.gitignore
+.env
+node_modules
+template_render
+zagent_render
+*.pptx
+*.pdf

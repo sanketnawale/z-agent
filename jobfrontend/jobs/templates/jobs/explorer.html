@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Z-Agent | Explorer</title>
+    <style>
+        :root {
+            --bg: #0a0f18;
+            --bg-2: #0f1624;
+            --panel: rgba(15, 22, 36, 0.92);
+            --panel-2: rgba(19, 29, 47, 0.96);
+            --panel-3: rgba(24, 36, 58, 0.98);
+            --border: rgba(255,255,255,0.08);
+            --border-strong: rgba(0, 200, 255, 0.22);
+            --text: #e8f4ff;
+            --muted: #90a8c4;
+            --faint: #61738d;
+            --cyan: #00c8ff;
+            --teal: #00e5c0;
+            --orange: #ff8a2a;
+            --green: #38d27a;
+            --red: #ff6b6b;
+            --yellow: #ffd166;
+            --shadow: 0 24px 60px rgba(0,0,0,0.38);
+            --radius: 22px;
+            --transition: 180ms ease;
+        }
+
+        * { box-sizing: border-box; }
+
+        html, body {
+            margin: 0;
+            min-height: 100%;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(0,200,255,.10), transparent 24%),
+                radial-gradient(circle at top right, rgba(0,229,192,.07), transparent 18%),
+                linear-gradient(180deg, var(--bg) 0%, #060b12 100%);
+            color: var(--text);
+        }
+
+        body { padding: 18px; }
+
+        .shell { max-width: 1500px; margin: 0 auto; }
+
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            background: rgba(10, 16, 28, 0.88);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(16px);
+        }
+
+        .brand small {
+            display: block;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .18em;
+            font-size: 11px;
+            margin-bottom: 4px;
+        }
+
+        .brand strong { font-size: 24px; line-height: 1.1; }
+
+        .top-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn, button.btn {
+            border: 1px solid var(--border-strong);
+            color: var(--text);
+            background: rgba(255,255,255,0.03);
+            border-radius: 999px;
+            min-height: 42px;
+            padding: 0 16px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            transition: var(--transition);
+        }
+
+        .btn:hover { background: rgba(0,200,255,.08); }
+
+        .btn.primary {
+            background: linear-gradient(135deg, var(--orange), #ffaf64);
+            color: #08111d;
+            border: 0;
+            box-shadow: 0 10px 30px rgba(255,138,42,.28);
+        }
+
+        .btn.secondary {
+            background: linear-gradient(135deg, rgba(0,200,255,.16), rgba(0,229,192,.12));
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: 280px 320px minmax(0, 1fr);
+            gap: 16px;
+            min-height: calc(100vh - 120px);
+        }
+
+        .pane {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            min-height: 760px;
+            backdrop-filter: blur(18px);
+        }
+
+        .pane-header {
+            padding: 18px 18px 14px;
+            border-bottom: 1px solid rgba(255,255,255,.06);
+            background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+        }
+
+        .pane-title {
+            margin: 0;
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: .16em;
+            color: var(--muted);
+        }
+
+        .pane-subtitle {
+            margin-top: 8px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: var(--faint);
+        }
+
+        .pane-body {
+            padding: 16px;
+            height: calc(100% - 96px);
+            overflow: auto;
+        }
+
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .search-box input {
+            flex: 1;
+            min-height: 44px;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,.08);
+            background: rgba(255,255,255,.03);
+            color: var(--text);
+            padding: 0 14px;
+            outline: none;
+        }
+
+        .section-label {
+            font-size: 12px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .16em;
+            margin: 14px 0 10px;
+        }
+
+        .folder-list, .member-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .folder, .member {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 13px 14px;
+            border-radius: 16px;
+            text-decoration: none;
+            color: var(--text);
+            background: rgba(255,255,255,.025);
+            border: 1px solid rgba(255,255,255,.05);
+            transition: var(--transition);
+        }
+
+        .folder:hover, .member:hover {
+            transform: translateY(-1px);
+            background: rgba(0,200,255,.06);
+            border-color: rgba(0,200,255,.24);
+        }
+
+        .folder.active, .member.active {
+            background: linear-gradient(135deg, rgba(0,200,255,.12), rgba(0,229,192,.06));
+            border-color: rgba(0,200,255,.34);
+            box-shadow: inset 0 0 0 1px rgba(0,200,255,.14);
+        }
+
+        .icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+            flex: 0 0 38px;
+        }
+
+        .folder-icon { background: rgba(255, 209, 102, 0.14); color: var(--yellow); }
+        .member-jcl { background: rgba(255,138,42,.14); color: #ffc08b; }
+        .member-cbl { background: rgba(0,229,192,.12); color: #9ef7e4; }
+        .member-default { background: rgba(0,200,255,.12); color: #b9efff; }
+
+        .item-main { min-width: 0; flex: 1; }
+        .item-name {
+            font-weight: 700;
+            font-size: 14px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .item-meta {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .preview-header {
+            padding: 18px 18px 14px;
+            border-bottom: 1px solid rgba(255,255,255,.06);
+            background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+            position: sticky;
+            top: 0;
+            z-index: 3;
+        }
+
+        .pathbar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            align-items: center;
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+
+        .crumb {
+            background: rgba(255,255,255,.04);
+            border: 1px solid rgba(255,255,255,.06);
+            border-radius: 999px;
+            padding: 6px 10px;
+        }
+
+        .preview-title {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: flex-start;
+            flex-wrap: wrap;
+        }
+
+        .preview-title h1 {
+            margin: 0;
+            font-size: clamp(1.55rem, 2.6vw, 2.4rem);
+            line-height: 1.05;
+        }
+
+        .preview-title p {
+            margin: 8px 0 0;
+            color: var(--muted);
+            line-height: 1.6;
+            max-width: 72ch;
+        }
+
+        .badges {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            border: 1px solid rgba(255,255,255,.08);
+            background: rgba(255,255,255,.03);
+            color: var(--text);
+        }
+
+        .badge.jcl { background: rgba(255,138,42,.12); color: #ffd5ae; border-color: rgba(255,138,42,.24); }
+        .badge.cbl { background: rgba(0,229,192,.12); color: #abfff0; border-color: rgba(0,229,192,.24); }
+        .badge.other { background: rgba(0,200,255,.12); color: #bcefff; border-color: rgba(0,200,255,.24); }
+
+        .preview-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 16px 18px 0;
+            background: var(--panel-2);
+        }
+
+        .tab {
+            border: 1px solid rgba(255,255,255,.08);
+            background: rgba(255,255,255,.03);
+            color: var(--muted);
+            border-radius: 999px;
+            padding: 10px 14px;
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .tab.active {
+            color: var(--text);
+            background: rgba(0,200,255,.10);
+            border-color: rgba(0,200,255,.24);
+        }
+
+        .preview-body {
+            padding: 18px;
+            background: var(--panel-2);
+            min-height: calc(100% - 245px);
+        }
+
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        .terminal, .result-box {
+            background: var(--panel-3);
+            border: 1px solid rgba(255,255,255,.06);
+            border-radius: 18px;
+            padding: 16px;
+            min-height: 470px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,.03);
+        }
+
+        .terminal pre, .result-box pre {
+            margin: 0;
+            white-space: pre-wrap;
+            line-height: 1.7;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            color: #dceeff;
+            font-size: 13.5px;
+        }
+
+        .result-box { min-height: 260px; }
+
+        .placeholder {
+            display: grid;
+            place-items: center;
+            min-height: 520px;
+            text-align: center;
+            color: var(--muted);
+            padding: 20px;
+            background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.01));
+            border: 1px dashed rgba(255,255,255,.08);
+            border-radius: 18px;
+        }
+
+        .placeholder strong {
+            display: block;
+            font-size: 20px;
+            color: var(--text);
+            margin-bottom: 10px;
+        }
+
+        .status-note {
+            margin-top: 12px;
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .quick-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0,1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .quick-card {
+            padding: 14px;
+            border-radius: 16px;
+            background: rgba(255,255,255,.03);
+            border: 1px solid rgba(255,255,255,.06);
+        }
+
+        .quick-card .k {
+            font-size: 11px;
+            letter-spacing: .16em;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .quick-card .v {
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .error-box {
+            margin-top: 14px;
+            background: rgba(255,107,107,.10);
+            border: 1px solid rgba(255,107,107,.22);
+            color: #ffcccc;
+            border-radius: 16px;
+            padding: 14px;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 1260px) {
+            .workspace { grid-template-columns: 260px 280px minmax(0, 1fr); }
+        }
+
+        @media (max-width: 1100px) {
+            .workspace { grid-template-columns: 1fr; }
+            .pane, .preview-pane { min-height: auto; }
+            .preview-header { position: static; }
+            .quick-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+    <script>
+        function activateTab(tabName) {
+            document.querySelectorAll('.tab').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tabName);
+            });
+            document.querySelectorAll('.tab-panel').forEach(panel => {
+                panel.classList.toggle('active', panel.dataset.panel === tabName);
+            });
+        }
+
+        async function explainInline() {
+            const codeElement = document.getElementById('member-code');
+            const resultBox = document.getElementById('ai-output');
+            const button = document.getElementById('explain-btn');
+            if (!codeElement || !resultBox || !button) return;
+
+            activateTab('ai');
+            button.disabled = true;
+            resultBox.textContent = 'Analyzing selected member with AI...';
+
+            try {
+                const response = await fetch('/explainer/member/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: codeElement.textContent })
+                });
+                const result = await response.json();
+                resultBox.textContent = result.response || result.error || 'No explanation returned.';
+            } catch (error) {
+                resultBox.textContent = 'Failed to generate explanation.';
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        async function submitInline() {
+            const datasetMember = "{{ dataset_member|default:''|escapejs }}";
+            const resultBox = document.getElementById('submit-output');
+            const button = document.getElementById('submit-btn');
+            if (!resultBox || !button) return;
+
+            activateTab('submit');
+
+            if (!datasetMember) {
+                resultBox.textContent = 'No member selected.';
+                return;
+            }
+
+            const isJcl = "{{ selected_dataset|default:''|escapejs }}".includes('.JCL');
+            if (!isJcl) {
+                resultBox.textContent = 'This member is not in a JCL library. Submit is enabled only for JCL job members.';
+                return;
+            }
+
+            button.disabled = true;
+            resultBox.textContent = 'Submitting selected JCL member...';
+
+            try {
+                const response = await fetch('/submit-jcl/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dataset_member: datasetMember })
+                });
+                const result = await response.json();
+                resultBox.textContent = result.result || result.error || 'No submission result returned.';
+            } catch (error) {
+                resultBox.textContent = 'Failed to submit JCL.';
+            } finally {
+                button.disabled = false;
+            }
+        }
+
+        async function copyCode() {
+            const codeElement = document.getElementById('member-code');
+            const out = document.getElementById('ai-output');
+            if (!codeElement || !out) return;
+            try {
+                await navigator.clipboard.writeText(codeElement.textContent);
+                activateTab('ai');
+                out.textContent = 'Member content copied to clipboard.';
+            } catch (err) {
+                activateTab('ai');
+                out.textContent = 'Unable to copy member content.';
+            }
+        }
+    </script>
+</head>
+<body>
+<div class="shell">
+    <div class="topbar">
+        <div class="brand">
+            <small>IBM Z Workspace</small>
+            <strong>Z-Agent Explorer</strong>
+        </div>
+        <div class="top-actions">
+            <a href="/jobs/" class="btn">Jobs</a>
+            <a href="/explorer/" class="btn secondary">Explorer</a>
+            <a href="/uss/" class="btn">USS</a>
+            <a class="btn" href="/logout/">Logout</a>
+        </div>
+    </div>
+
+    <div class="workspace">
+        <aside class="pane">
+            <div class="pane-header">
+                <h2 class="pane-title">Libraries</h2>
+                <div class="pane-subtitle">Browse z/OS datasets like folders in a desktop file manager.</div>
+            </div>
+            <div class="pane-body">
+                <form method="get" class="search-box">
+                    <input type="text" name="pattern" value="{{ pattern }}" placeholder="Z00805.*">
+                    <button type="submit" class="btn primary">Load</button>
+                </form>
+
+                <div class="section-label">Dataset folders</div>
+                <div class="folder-list">
+                    {% for ds in datasets %}
+                        <a class="folder {% if ds == selected_dataset %}active{% endif %}"
+                           href="/explorer/?pattern={{ pattern|urlencode }}&dataset={{ ds|urlencode }}">
+                            <span class="icon folder-icon">📁</span>
+                            <span class="item-main">
+                                <span class="item-name">{{ ds }}</span>
+                                <span class="item-meta">Mainframe dataset library</span>
+                            </span>
+                        </a>
+                    {% empty %}
+                        <div class="placeholder" style="min-height:200px;">
+                            <div>
+                                <strong>No datasets found</strong>
+                                Try a broader mask like <code>Z00805.*</code>.
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </aside>
+
+        <aside class="pane">
+            <div class="pane-header">
+                <h2 class="pane-title">Members</h2>
+                <div class="pane-subtitle">Selected dataset opens here like a folder window.</div>
+            </div>
+            <div class="pane-body">
+                {% if selected_dataset %}
+                    <div class="section-label">Opened folder</div>
+                    <div class="quick-card" style="margin-bottom:16px;">
+                        <div class="k">Current dataset</div>
+                        <div class="v" style="font-size:16px; word-break:break-word;">{{ selected_dataset }}</div>
+                    </div>
+
+                    <div class="member-list">
+                        {% for member in members %}
+                            <a class="member {% if member == selected_member %}active{% endif %}"
+                               href="/explorer/?pattern={{ pattern|urlencode }}&dataset={{ selected_dataset|urlencode }}&member={{ member|urlencode }}">
+                                {% if '.JCL' in selected_dataset %}
+                                    <span class="icon member-jcl">📝</span>
+                                {% elif '.CBL' in selected_dataset or '.SOURCE' in selected_dataset %}
+                                    <span class="icon member-cbl">💻</span>
+                                {% else %}
+                                    <span class="icon member-default">📄</span>
+                                {% endif %}
+                                <span class="item-main">
+                                    <span class="item-name">{{ member }}</span>
+                                    <span class="item-meta">
+                                        {% if '.JCL' in selected_dataset %}
+                                            JCL job member
+                                        {% elif '.CBL' in selected_dataset or '.SOURCE' in selected_dataset %}
+                                            Source program member
+                                        {% else %}
+                                            Dataset member
+                                        {% endif %}
+                                    </span>
+                                </span>
+                            </a>
+                        {% empty %}
+                            <div class="placeholder" style="min-height:220px;">
+                                <div>
+                                    <strong>No members found</strong>
+                                    This dataset did not return any members.
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="placeholder">
+                        <div>
+                            <strong>Select a dataset</strong>
+                            Open a library from the left pane to load its members here.
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </aside>
+
+        <section class="pane preview-pane">
+            <div class="preview-header">
+                {% if dataset_member %}
+                    <div class="pathbar">
+                        <span class="crumb">IBM Z Workspace</span>
+                        <span>›</span>
+                        <span class="crumb">{{ selected_dataset }}</span>
+                        <span>›</span>
+                        <span class="crumb">{{ selected_member }}</span>
+                    </div>
+
+                    <div class="preview-title">
+                        <div>
+                            <h1>{{ selected_member }}</h1>
+                            <p>
+                                Review the selected member, inspect its content, generate an AI explanation,
+                                or submit it directly when it is a runnable JCL member.
+                            </p>
+                            <div class="badges">
+                                {% if '.JCL' in selected_dataset %}
+                                    <span class="badge jcl">Runnable JCL</span>
+                                {% elif '.CBL' in selected_dataset or '.SOURCE' in selected_dataset %}
+                                    <span class="badge cbl">Source Program</span>
+                                {% else %}
+                                    <span class="badge other">Dataset Member</span>
+                                {% endif %}
+                                <span class="badge other">{{ dataset_member }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="preview-actions">
+                        <a class="btn" href="/explorer/member/{{ selected_dataset|urlencode }}/{{ selected_member|urlencode }}/">Open Detail View</a>
+                        <button id="explain-btn" type="button" class="btn secondary" onclick="explainInline()">Explain with AI</button>
+                        {% if '.JCL' in selected_dataset %}
+                            <button id="submit-btn" type="button" class="btn primary" onclick="submitInline()">Submit JCL</button>
+                        {% else %}
+                            <button id="submit-btn" type="button" class="btn" onclick="submitInline()">Submit Disabled</button>
+                        {% endif %}
+                        <button type="button" class="btn" onclick="copyCode()">Copy Code</button>
+                    </div>
+                {% else %}
+                    <div class="pathbar">
+                        <span class="crumb">IBM Z Workspace</span>
+                        <span>›</span>
+                        <span class="crumb">Explorer</span>
+                    </div>
+                    <div class="preview-title">
+                        <div>
+                            <h1>Preview Pane</h1>
+                            <p>Select a member from the middle pane to open the live preview workspace.</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" data-tab="code" onclick="activateTab('code')">Code Preview</button>
+                <button class="tab" data-tab="ai" onclick="activateTab('ai')">AI Summary</button>
+                <button class="tab" data-tab="submit" onclick="activateTab('submit')">Submit Result</button>
+            </div>
+
+            <div class="preview-body">
+                {% if dataset_member %}
+                    <div class="quick-grid">
+                        <div class="quick-card">
+                            <div class="k">Dataset</div>
+                            <div class="v" style="font-size:15px; word-break:break-word;">{{ selected_dataset }}</div>
+                        </div>
+                        <div class="quick-card">
+                            <div class="k">Member</div>
+                            <div class="v">{{ selected_member }}</div>
+                        </div>
+                        <div class="quick-card">
+                            <div class="k">Type</div>
+                            <div class="v">
+                                {% if '.JCL' in selected_dataset %}
+                                    JCL
+                                {% elif '.CBL' in selected_dataset or '.SOURCE' in selected_dataset %}
+                                    Source
+                                {% else %}
+                                    Member
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-panel active" data-panel="code">
+                        <div class="terminal">
+                            <pre id="member-code">{% if member_content %}{{ member_content }}{% else %}Select a member to view its content.{% endif %}</pre>
+                        </div>
+                        <div class="status-note">
+                            Explain works for any member. Submission is enabled for JCL members because those are the runnable job definitions.
+                        </div>
+                    </div>
+
+                    <div class="tab-panel" data-panel="ai">
+                        <div class="result-box">
+                            <pre id="ai-output">Select Explain with AI to generate a plain-English walkthrough of the current member.</pre>
+                        </div>
+                    </div>
+
+                    <div class="tab-panel" data-panel="submit">
+                        <div class="result-box">
+                            <pre id="submit-output">Submit results will appear here. Successful JCL submissions should return a job ID and initial JES status.</pre>
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="placeholder">
+                        <div>
+                            <strong>No member selected</strong>
+                            Pick a dataset and member to open the preview workspace.
+                        </div>
+                    </div>
+                {% endif %}
+
+                {% if error %}
+                    <div class="error-box">{{ error }}</div>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+</div>
+</body>
+</html>

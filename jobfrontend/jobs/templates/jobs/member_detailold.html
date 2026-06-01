@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Z-Agent | {{ dataset_member }}</title>
+    <style>
+        :root {
+            --bg:#03070f; --panel:rgba(8,15,30,.9); --text:#e8f4ff; --muted:#7ba8c8; --cyan:#00c8ff; --orange:#ff7a1a;
+        }
+        * { box-sizing: border-box; }
+        body { margin:0; font-family:Inter, Arial, sans-serif; background:linear-gradient(180deg,#03070f 0%,#07101d 100%); color:var(--text); }
+        .wrap { width:min(1320px, calc(100% - 32px)); margin:0 auto; padding:28px 0 48px; }
+        .nav,.card { background:var(--panel); border:1px solid rgba(255,255,255,.06); border-radius:20px; box-shadow:0 20px 50px rgba(0,0,0,.35); }
+        .nav { padding:16px 20px; margin-bottom:20px; display:flex; justify-content:space-between; gap:12px; align-items:center; flex-wrap:wrap; }
+        .grid { display:grid; grid-template-columns:1.1fr .9fr; gap:18px; }
+        .card { padding:20px; }
+        .label { font-size:12px; letter-spacing:.16em; color:var(--muted); text-transform:uppercase; margin-bottom:8px; }
+        .actions { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; }
+        .btn, button.btn {
+            min-height:42px; padding:0 16px; border-radius:999px; border:1px solid rgba(0,200,255,.22);
+            background:rgba(255,255,255,.02); color:var(--text); font-weight:700; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center;
+        }
+        .btn.primary { background:linear-gradient(135deg,#ff7a1a,#ff9a4d); color:#09111f; border:0; }
+        pre, .ai-box {
+            margin:0; white-space:pre-wrap; line-height:1.7; font-family:Consolas, monospace;
+            background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:16px;
+        }
+        .ai-box { min-height:260px; font-family:Inter, Arial, sans-serif; }
+        @media (max-width: 1050px) { .grid { grid-template-columns:1fr; } }
+    </style>
+    <script>
+        async function explainCode() {
+            const target = document.getElementById("code-content").textContent;
+            const box = document.getElementById("explanation-box");
+            box.textContent = "Generating explanation...";
+            try {
+                const response = await fetch("/explainer/member/", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ content: target })
+                });
+                const result = await response.json();
+                box.textContent = result.response || result.error || "No explanation returned.";
+            } catch (e) {
+                box.textContent = "Failed to generate explanation.";
+            }
+        }
+
+        async function submitJcl() {
+            const datasetMember = "{{ dataset_member }}";
+            const box = document.getElementById("submit-box");
+            box.textContent = "Submitting JCL...";
+            try {
+                const response = await fetch("/submit-jcl/", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ dataset_member: datasetMember })
+                });
+                const result = await response.json();
+                box.textContent = result.result || result.error || "No submission result returned.";
+            } catch (e) {
+                box.textContent = "Failed to submit JCL.";
+            }
+        }
+    </script>
+</head>
+<body>
+<div class="wrap">
+    <div class="nav">
+        <div>
+            <div class="label">Dataset Member</div>
+            <div style="font-size:22px;font-weight:800;">{{ dataset_member }}</div>
+        </div>
+        <div class="actions">
+            <a href="/explorer/?dataset={{ dataset|urlencode }}&member={{ member|urlencode }}" class="btn">Back to Explorer</a>
+            <button class="btn" onclick="explainCode()">Explain Code</button>
+            <button class="btn primary" onclick="submitJcl()">Submit JCL</button>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <div class="label">Source / JCL Content</div>
+            <pre id="code-content">{{ content }}</pre>
+        </div>
+
+        <div class="card">
+            <div class="label">AI Explanation</div>
+            <div id="explanation-box" class="ai-box">Click “Explain Code” to get a plain-English explanation of this JCL or member.</div>
+
+            <div class="label" style="margin-top:18px;">Submission Result</div>
+            <div id="submit-box" class="ai-box">Click “Submit JCL” to submit this dataset member as a job.</div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

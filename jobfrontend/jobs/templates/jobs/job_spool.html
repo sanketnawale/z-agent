@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IBM Z Spool Intelligence</title>
+    <style>
+        :root {
+            --bg: #0b1118;
+            --panel: rgba(16, 24, 36, 0.94);
+            --panel-2: rgba(20, 31, 47, 0.98);
+            --panel-3: rgba(26, 39, 59, 0.98);
+            --line: rgba(255,255,255,.08);
+            --text: #e9f4ff;
+            --muted: #96abc4;
+            --faint: #667a95;
+            --cyan: #56d7ff;
+            --green: #46d38a;
+            --amber: #ffb35c;
+            --red: #ff6b76;
+            --shadow: 0 24px 60px rgba(0,0,0,.35);
+            --radius: 20px;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: Inter, system-ui, sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(86,215,255,.08), transparent 24%),
+                linear-gradient(180deg, var(--bg), #050910 100%);
+            padding: 18px;
+        }
+        .wrap { max-width: 1500px; margin: 0 auto; }
+        .topbar, .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(14px);
+        }
+        .topbar {
+            padding: 16px 20px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .brand small {
+            display: block;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .18em;
+            font-size: 11px;
+            margin-bottom: 4px;
+        }
+        .brand strong { font-size: 24px; }
+        .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn, button.btn {
+            min-height: 42px;
+            padding: 0 16px;
+            border-radius: 999px;
+            border: 1px solid rgba(86,215,255,.22);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            background: rgba(255,255,255,.03);
+            color: var(--text);
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .btn.primary {
+            background: linear-gradient(135deg, var(--amber), #ffd08f);
+            border: 0;
+            color: #08111b;
+        }
+        .hero { padding: 22px; margin-bottom: 16px; }
+        .eyebrow {
+            display: inline-flex;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(86,215,255,.10);
+            border: 1px solid rgba(86,215,255,.22);
+            color: var(--cyan);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: .16em;
+        }
+        h1 {
+            margin: 12px 0 10px;
+            font-size: clamp(2rem, 3vw, 3rem);
+            line-height: 1.05;
+        }
+        .sub {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.7;
+            max-width: 78ch;
+        }
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0,1fr));
+            gap: 12px;
+            margin-top: 18px;
+        }
+        .mini {
+            padding: 14px;
+            border-radius: 16px;
+            background: rgba(255,255,255,.03);
+            border: 1px solid rgba(255,255,255,.06);
+        }
+        .k {
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: .16em;
+            margin-bottom: 8px;
+        }
+        .v {
+            font-weight: 800;
+            font-size: 16px;
+            word-break: break-word;
+        }
+        .success { color: var(--green); }
+        .warning { color: var(--amber); }
+        .error { color: var(--red); }
+        .layout {
+            display: grid;
+            grid-template-columns: 1.02fr .98fr;
+            gap: 16px;
+        }
+        .panel { padding: 18px; }
+        .section-title {
+            margin: 0 0 12px;
+            font-size: 14px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .16em;
+        }
+        .diag-list, .evidence-list { display: grid; gap: 12px; }
+        .diag-item, .evidence-item, .result-box {
+            padding: 14px;
+            border-radius: 16px;
+            background: var(--panel-2);
+            border: 1px solid rgba(255,255,255,.06);
+        }
+        .diag-item strong, .evidence-item strong {
+            display: block;
+            margin-bottom: 6px;
+        }
+        .diag-item p, .evidence-item p {
+            margin: 0;
+            color: var(--muted);
+            line-height: 1.65;
+        }
+        .evidence-line {
+            margin: 0;
+            white-space: pre-wrap;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12.8px;
+            line-height: 1.65;
+            color: #dff1ff;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .tab {
+            border: 1px solid rgba(255,255,255,.08);
+            background: rgba(255,255,255,.03);
+            color: var(--muted);
+            padding: 10px 14px;
+            border-radius: 999px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .tab.active {
+            color: var(--text);
+            background: rgba(86,215,255,.10);
+            border-color: rgba(86,215,255,.24);
+        }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+        .collapse {
+            border: 1px solid rgba(255,255,255,.06);
+            background: var(--panel-2);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+        .collapse summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 14px 16px;
+            font-weight: 800;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: center;
+        }
+        .collapse summary::-webkit-details-marker { display: none; }
+        .collapse .content { padding: 0 16px 16px; }
+        .content pre, .result-box pre, .raw pre {
+            margin: 0;
+            white-space: pre-wrap;
+            line-height: 1.68;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 12.8px;
+            color: #dff1ff;
+        }
+        .raw {
+            max-height: 560px;
+            overflow: auto;
+            background: var(--panel-3);
+            padding: 16px;
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,.06);
+        }
+        .meta-note {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.7;
+            margin-top: 10px;
+        }
+        @media (max-width: 1100px) {
+            .layout, .summary-grid { grid-template-columns: 1fr; }
+            .summary-grid { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 700px) {
+            .summary-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+    <script>
+        function activateTab(tabName) {
+            document.querySelectorAll('.tab').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tabName);
+            });
+            document.querySelectorAll('.tab-panel').forEach(panel => {
+                panel.classList.toggle('active', panel.dataset.panel === tabName);
+            });
+        }
+
+        async function explainSpool() {
+            const output = document.getElementById('ai-output');
+            const button = document.getElementById('ai-btn');
+            const promptEl = document.getElementById('ai-prompt');
+            const prompt = (promptEl && promptEl.textContent || '').trim();
+
+            activateTab('ai');
+            button.disabled = true;
+
+            if (!prompt) {
+                output.textContent = 'No AI prompt was generated for this job.';
+                button.disabled = false;
+                return;
+            }
+
+            output.textContent = 'Analyzing spool diagnosis...';
+
+            try {
+                const response = await fetch('/send_spool/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt })
+                });
+                const result = await response.json();
+                output.textContent = result.response || result.error || 'No response returned.';
+            } catch (error) {
+                output.textContent = 'Failed to explain spool output.';
+            } finally {
+                button.disabled = false;
+            }
+        }
+    </script>
+</head>
+<body>
+<div class="wrap">
+    <div class="topbar">
+        <div class="brand">
+            <small>IBM Z Workspace</small>
+            <strong>Spool Intelligence</strong>
+        </div>
+        <div class="actions">
+            <a class="btn" href="/jobs/">Back to Jobs</a>
+            <a class="btn" href="/explorer/">Explorer</a>
+            <a class="btn" href="/uss/">USS</a>
+            <a class="btn" href="/logout/">Logout</a>
+            <button id="ai-btn" class="btn primary" onclick="explainSpool()">Explain Spool</button>
+        </div>
+    </div>
+
+    <section class="card hero">
+        <span class="eyebrow">Job {{ diagnosis.jobid }}</span>
+        <h1>{{ diagnosis.jobname }}</h1>
+        <p class="sub">{{ diagnosis.headline }}. {{ diagnosis.root_cause }} {{ diagnosis.impact }}</p>
+        <div class="summary-grid">
+            <div class="mini">
+                <div class="k">Final result</div>
+                <div class="v {{ diagnosis.severity }}">{{ diagnosis.headline }}</div>
+            </div>
+            <div class="mini">
+                <div class="k">Return code</div>
+                <div class="v {% if diagnosis.final_rc == '0000' %}success{% elif diagnosis.final_rc == 'Unknown' %}warning{% else %}error{% endif %}">RC {{ diagnosis.final_rc }}</div>
+            </div>
+            <div class="mini">
+                <div class="k">Root cause</div>
+                <div class="v">{{ diagnosis.root_cause }}</div>
+            </div>
+            <div class="mini">
+                <div class="k">Impact</div>
+                <div class="v">{{ diagnosis.impact }}</div>
+            </div>
+        </div>
+    </section>
+
+    <div class="layout">
+        <section class="card panel">
+            <h2 class="section-title">Diagnosis</h2>
+            <div class="diag-list">
+                <div class="diag-item">
+                    <strong>What happened</strong>
+                    <p>{{ diagnosis.headline }}. {{ diagnosis.root_cause }}</p>
+                </div>
+                <div class="diag-item">
+                    <strong>Impact</strong>
+                    <p>{{ diagnosis.impact }}</p>
+                </div>
+                <div class="diag-item">
+                    <strong>Recommended fix</strong>
+                    <p>{{ diagnosis.fix }}</p>
+                </div>
+            </div>
+
+            <div style="height:16px"></div>
+            <h2 class="section-title">Evidence</h2>
+            <div class="evidence-list">
+                {% for line in diagnosis.evidence %}
+                    <div class="evidence-item"><pre class="evidence-line">{{ line }}</pre></div>
+                {% empty %}
+                    <div class="evidence-item"><p>No explicit evidence lines were extracted from the spool text.</p></div>
+                {% endfor %}
+            </div>
+
+            {% if diagnosis.skipped_steps %}
+                <div style="height:16px"></div>
+                <h2 class="section-title">Skipped steps</h2>
+                <div class="evidence-list">
+                    {% for line in diagnosis.skipped_steps %}
+                        <div class="evidence-item"><pre class="evidence-line">{{ line }}</pre></div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </section>
+
+        <section class="card panel">
+            <h2 class="section-title">AI explanation and logs</h2>
+            <div class="tabs">
+                <button class="tab active" data-tab="ai" onclick="activateTab('ai')">AI Explanation</button>
+                <button class="tab" data-tab="logs" onclick="activateTab('logs')">Collapsed Logs</button>
+                <button class="tab" data-tab="raw" onclick="activateTab('raw')">Raw Spool</button>
+            </div>
+
+            <div class="tab-panel active" data-panel="ai">
+                <div class="result-box">
+                    <pre id="ai-output">Select Explain Spool to generate a concise, job-specific explanation from the extracted diagnosis and evidence.</pre>
+                </div>
+                <pre id="ai-prompt" style="display:none;">{{ diagnosis.ai_prompt }}</pre>
+                <div class="meta-note">The AI prompt now uses extracted diagnosis data instead of dumping the entire spool, which makes the explanation faster, cleaner, and job-specific.</div>
+            </div>
+
+            <div class="tab-panel" data-panel="logs">
+                {% for section in spool_sections %}
+                    <details class="collapse" {% if forloop.first %}open{% endif %}>
+                        <summary>
+                            <span>{{ section.title }}</span>
+                            <span style="color:var(--muted); font-size:12px; font-weight:700;">
+                                {% if section.step %}Step: {{ section.step }}{% endif %}{% if section.procstep %} · ProcStep: {{ section.procstep }}{% endif %}{% if section.section_id %} · ID #{{ section.section_id }}{% endif %}
+                            </span>
+                        </summary>
+                        <div class="content"<pre>{% for line in section.content %}{{ line }}
+                        {% endfor %}</pre>><
+                    </details>
+                {% empty %}
+                    <div class="result-box"><pre>No spool sections were parsed from the backend response.</pre></div>
+                {% endfor %}
+            </div>
+
+            <div class="tab-panel" data-panel="raw">
+                <div class="raw"><pre>{{ raw_spool }}</pre></div>
+            </div>
+        </section>
+    </div>
+</div>
+</body>
+</html>

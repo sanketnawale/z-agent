@@ -1,0 +1,32 @@
+# Python virtual environments
+venv/
+venv_linux/
+.venv/
+jobfrontend/venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Django / database
+db.sqlite3
+*.sqlite3
+
+# Secrets
+.env
+*.env
+zowe.config.json
+zowe.schema.json
+
+# Editor
+.vscode/
+
+# Node
+node_modules/
+
+# Generated files
+template_render/
+zagent_render/
+*.pptx
+*.pdf

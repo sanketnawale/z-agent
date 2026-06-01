@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Z-Agent | Jobs</title>
+    <style>
+        :root {
+            --bg: #03070f;
+            --panel: rgba(8, 15, 30, 0.9);
+            --border: rgba(0, 200, 255, 0.22);
+            --text: #e8f4ff;
+            --muted: #7ba8c8;
+            --cyan: #00c8ff;
+            --orange: #ff7a1a;
+            --green: #22c55e;
+            --yellow: #facc15;
+            --red: #ef4444;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: Inter, Arial, sans-serif;
+            background: linear-gradient(180deg, #03070f 0%, #07101d 100%);
+            color: var(--text);
+        }
+        .wrap { width: min(1280px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 48px; }
+        .nav, .card {
+            background: var(--panel);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 20px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+        }
+        .nav {
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+        }
+        .brand { font-size: 22px; font-weight: 800; }
+        .brand small { display: block; font-size: 11px; letter-spacing: .18em; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+        .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn, a.btn {
+            text-decoration: none;
+            min-height: 42px;
+            padding: 0 16px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            border: 1px solid var(--border);
+            color: var(--text);
+            background: rgba(255,255,255,0.02);
+        }
+        .btn.primary { background: linear-gradient(135deg, #ff7a1a, #ff9a4d); color: #09111f; border: 0; }
+        .hero { display: grid; grid-template-columns: 1.35fr 0.9fr; gap: 18px; margin-bottom: 20px; }
+        .hero .card { padding: 24px; }
+        h1 { margin: 0 0 10px; font-size: clamp(2rem, 3vw, 3.2rem); line-height: 1.05; }
+        p { color: var(--muted); line-height: 1.7; }
+        .stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 20px; }
+        .stat { padding: 18px; }
+        .label { font-size: 12px; letter-spacing: .16em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+        .value { font-size: 28px; font-weight: 800; }
+        .table-card { padding: 18px; }
+        table { width: 100%; border-collapse: collapse; min-width: 880px; }
+        .table-wrap { overflow: auto; border: 1px solid rgba(255,255,255,0.06); border-radius: 18px; }
+        th, td { padding: 15px 14px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        th { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .14em; }
+        .badge { display: inline-flex; padding: 7px 11px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+        .success { background: rgba(34,197,94,.12); color: #b8ffcf; }
+        .error { background: rgba(239,68,68,.12); color: #ffc3c3; }
+        .warning { background: rgba(250,204,21,.12); color: #ffe7a0; }
+        .info { background: rgba(0,200,255,.12); color: #bcefff; }
+        .mono { font-family: Consolas, monospace; }
+        @media (max-width: 1050px) { .hero, .stats { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="nav">
+        <div class="brand">
+            <small>IBM Z Observability</small>
+            Z-Agent Console
+        </div>
+        <div class="actions">
+            <a class="btn" href="/explorer/">Open Explorer</a>
+            <a class="btn" href="/uss/">USS</a>
+            <a class="btn" href="/ai-settings/">AI Settings</a>
+            <a class="btn" href="/logout/">Logout</a>
+            <a class="btn primary" href="/jobs/">Refresh Jobs</a>
+        </div>
+    </div>
+
+    <div class="hero">
+        <div class="card">
+            <div class="label">Live queue</div>
+            <h1>Jobs, spool intelligence, datasets, and AI explanation in one workflow.</h1>
+            <p>Use the jobs page to inspect active and completed runs, open spool content, and jump into the explorer to view JCL libraries and submit members directly.</p>
+        </div>
+        <div class="card">
+            <div class="label">Visible jobs</div>
+            <div class="value">{{ jobs|length }}</div>
+            <p>Current jobs returned by the backend for the configured IBM Z account.</p>
+        </div>
+    </div>
+
+    <div class="stats">
+        <div class="card stat">
+            <div class="label">Queue Size</div>
+            <div class="value">{{ jobs|length }}</div>
+        </div>
+        <div class="card stat">
+            <div class="label">Explorer</div>
+            <div class="value mono" style="font-size:18px;">Datasets + Members</div>
+        </div>
+        <div class="card stat">
+            <div class="label">AI Feature</div>
+            <div class="value mono" style="font-size:18px;">Spool + Code Explain</div>
+        </div>
+        <div class="card stat">
+            <div class="label">Action</div>
+            <div class="value mono" style="font-size:18px;">Direct JCL Submit</div>
+        </div>
+    </div>
+
+    <div class="card table-card">
+        <div class="label">Job Queue</div>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                <tr>
+                    <th>Job ID</th>
+                    <th>Return Code</th>
+                    <th>Job Name</th>
+                    <th>Status</th>
+                    <th>Spool</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for job in jobs %}
+                    <tr>
+                        <td class="mono"><a href="{% url 'view_spool' job.jobid %}" style="color:#00c8ff;">{{ job.jobid }}</a></td>
+                        <td><span class="badge {{ job.severity }}">{{ job.retcode }}</span></td>
+                        <td class="mono">{{ job.jobname }}</td>
+                        <td><span class="badge {{ job.severity }}">{{ job.status }}</span></td>
+                        <td><a class="btn" href="{% url 'view_spool' job.jobid %}">Open</a></td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="5">No jobs returned.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</body>
+</html>

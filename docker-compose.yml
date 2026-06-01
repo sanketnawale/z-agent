@@ -1,0 +1,28 @@
+services:
+  z-agent:
+    build: .
+    container_name: z-agent
+    ports:
+      - "8001:8001"
+    environment:
+      FASTAPI_URL: http://127.0.0.1:3001
+      OLLAMA_URL: http://ollama:11434/api/generate
+      DJANGO_ALLOWED_HOSTS: "*"
+      DJANGO_DEBUG: "True"
+      WEB_WORKERS: "2"
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: z-agent-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  ollama-data:
+

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Z-Agent | Spool {{ jobid }}</title>
+    <style>
+        :root {
+            --bg: #03070f; --panel: rgba(8, 15, 30, 0.9); --text: #e8f4ff; --muted: #7ba8c8;
+            --cyan: #00c8ff; --orange: #ff7a1a; --green: #22c55e; --yellow: #facc15; --red: #ef4444;
+        }
+        * { box-sizing: border-box; }
+        body { margin:0; font-family: Inter, Arial, sans-serif; background: linear-gradient(180deg,#03070f 0%,#07101d 100%); color:var(--text); }
+        .wrap { width:min(1320px, calc(100% - 32px)); margin:0 auto; padding:28px 0 48px; }
+        .nav,.card,.spool-block { background:var(--panel); border:1px solid rgba(255,255,255,.06); border-radius:20px; box-shadow:0 20px 50px rgba(0,0,0,.35); }
+        .nav { padding:16px 20px; margin-bottom:20px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px; align-items:center; }
+        .actions { display:flex; gap:10px; flex-wrap:wrap; }
+        .btn { min-height:42px; padding:0 16px; border-radius:999px; border:1px solid rgba(0,200,255,.22); background:rgba(255,255,255,.02); color:var(--text); font-weight:700; cursor:pointer; }
+        .btn.primary { background:linear-gradient(135deg,#ff7a1a,#ff9a4d); color:#09111f; border:0; }
+        .grid { display:grid; grid-template-columns:1.1fr .9fr; gap:18px; margin-bottom:20px; }
+        .card { padding:22px; }
+        h1 { margin:0 0 10px; font-size:clamp(2rem, 3vw, 3rem); }
+        .label { font-size:12px; letter-spacing:.16em; color:var(--muted); text-transform:uppercase; margin-bottom:8px; }
+        .pill { display:inline-flex; padding:7px 11px; border-radius:999px; font-size:12px; font-weight:700; }
+        .success { background: rgba(34,197,94,.12); color: #b8ffcf; }
+        .error { background: rgba(239,68,68,.12); color: #ffc3c3; }
+        .warning { background: rgba(250,204,21,.12); color: #ffe7a0; }
+        .info { background: rgba(0,200,255,.12); color: #bcefff; }
+        .content-box, .ai-box {
+            white-space: pre-wrap; line-height:1.7; padding:16px; border-radius:16px;
+            background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06);
+        }
+        .spool-list { display:grid; gap:16px; }
+        .spool-title { padding:14px 16px; border-bottom:1px solid rgba(255,255,255,.06); color:var(--cyan); font-weight:700; }
+        .spool-content { padding:16px; white-space:pre-wrap; overflow:auto; font-family:Consolas, monospace; line-height:1.7; }
+        @media (max-width: 1050px) { .grid { grid-template-columns:1fr; } }
+
+    </style>
+    <script>
+        async function sendToOllama() {
+            const responseBox = document.getElementById("ollama-response");
+            const button = document.getElementById("analyze-btn");
+            button.disabled = true;
+            responseBox.textContent = "Analyzing spool output...";
+            try {
+                const response = await fetch("/send_spool/", {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({ content: document.getElementById("spool-raw").textContent })
+                });
+                const result = await response.json();
+                responseBox.textContent = result.response || result.error || "No response received";
+            } catch (e) {
+                responseBox.textContent = "Unable to reach analysis endpoint.";
+            } finally {
+                button.disabled = false;
+            }
+        }
+    </script>
+</head>
+<body>
+<div class="wrap">
+    <div class="nav">
+        <div>
+            <div class="label">IBM Z Spool Intelligence</div>
+            <div style="font-size:22px;font-weight:800;">Job {{ jobid }}</div>
+        </div>
+        <div class="actions">
+            <a href="/jobs/" class="btn" style="display:inline-flex;align-items:center;text-decoration:none;">Back to Jobs</a>
+            <a href="/explorer/" class="btn" style="display:inline-flex;align-items:center;text-decoration:none;">Open Explorer</a>
+            <button id="analyze-btn" class="btn primary" onclick="sendToOllama()">Explain Spool</button>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <div class="label">Rule-based Diagnosis</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+                <span class="pill {{ diagnosis.severity|default:'info' }}">{{ diagnosis.severity|default:"info"|upper }}</span>
+                {% for code in diagnosis.messages %}
+                    <span class="pill info">{{ code }}</span>
+                {% endfor %}
+            </div>
+            <div class="content-box">
+{% for line in diagnosis.summary %}
+- {{ line }}
+{% empty %}
+- No diagnosis generated.
+{% endfor %}
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="label">AI Explanation</div>
+            <div id="ollama-response" class="ai-box">Click “Explain Spool” to generate a natural-language explanation.</div>
+        </div>
+    </div>
+
+    <div id="spool-raw" style="display:none;">{{ spool_raw }}</div>
+
+    <div class="spool-list">
+        {% for section in spool_sections %}
+            <div class="spool-block">
+                <div class="spool-title">{{ section.title }}</div>
+                <div class="spool-content">{% for line in section.content %}{{ line }}
+{% endfor %}</div>
+            </div>
+        {% empty %}
+            <div class="spool-block">
+                <div class="spool-title">No spool sections found</div>
+                <div class="spool-content">The backend did not return spool sections.</div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+</body>
+</html>
