@@ -1,32 +1,42 @@
-# Python virtual environments
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
 venv/
 venv_linux/
 .venv/
+env/
 jobfrontend/venv/
 
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-
-# Django / database
+# Django / local runtime
+*.log
 db.sqlite3
-*.sqlite3
+media/
+staticfiles/
 
-# Secrets
+# Environment / secrets
 .env
 *.env
+!.env.example
+
+# Zowe / credentials
 zowe.config.json
 zowe.schema.json
+.zowe/
+*.key
+*.pem
+*.crt
 
-# Editor
+# IDE / OS
 .vscode/
+.idea/
+.DS_Store
+Thumbs.db
 
-# Node
-node_modules/
-
-# Generated files
-template_render/
-zagent_render/
-*.pptx
-*.pdf
+# Docker local
+*.pid
