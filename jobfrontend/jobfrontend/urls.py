@@ -19,4 +19,5 @@ urlpatterns = [
     path("explainer/member/", views.explain_member, name="explain_member"),
     path("submit-jcl/", views.submit_jcl, name="submit_jcl"),
     path("audit/", views.audit_logs, name="audit_logs"),
+    path("safety/", views.safety_settings_view, name="safety_settings"),
 ]

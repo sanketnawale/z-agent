@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Z-Agent Safety Settings</title>
+    <style>
+        body {
+            background: #07111f;
+            color: #eaf2ff;
+            font-family: Arial, sans-serif;
+            padding: 24px;
+        }
+        h1 { color: #7dd3fc; }
+        .card {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 14px;
+            padding: 20px;
+            max-width: 760px;
+        }
+        label {
+            display: block;
+            margin: 14px 0;
+            padding: 14px;
+            background: #111827;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            border: 0;
+            padding: 12px 18px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .saved {
+            color: #22c55e;
+            margin-bottom: 16px;
+            font-weight: bold;
+        }
+        a {
+            color: #38bdf8;
+            text-decoration: none;
+        }
+        .mode {
+            color: #facc15;
+            font-weight: bold;
+        }
+        .desc {
+            color: #cbd5e1;
+            font-size: 14px;
+            margin-left: 26px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Z-Agent Safety Settings</h1>
+
+    <p>
+        User: {{ zowe_user }} |
+        Current Safety Mode: <span class="mode">{{ safety_mode }}</span> |
+        <a href="{% url 'job_list' %}">Back to Jobs</a> |
+        <a href="{% url 'audit_logs' %}">Audit Logs</a>
+    </p>
+
+    {% if saved %}
+        <div class="saved">Safety mode saved successfully.</div>
+    {% endif %}
+
+    <div class="card">
+        <form method="post">
+            {% csrf_token %}
+
+            <label>
+                <input type="radio" name="safety_mode" value="READ_ONLY" {% if safety_mode == "READ_ONLY" %}checked{% endif %}>
+                READ_ONLY
+                <div class="desc">Safest mode. View jobs, spool, datasets, USS, and AI explanation. Risky actions like JCL submit are blocked.</div>
+            </label>
+
+            <label>
+                <input type="radio" name="safety_mode" value="APPROVAL_REQUIRED" {% if safety_mode == "APPROVAL_REQUIRED" %}checked{% endif %}>
+                APPROVAL_REQUIRED
+                <div class="desc">Risky actions require explicit confirmation before execution.</div>
+            </label>
+
+            <label>
+                <input type="radio" name="safety_mode" value="EXECUTE" {% if safety_mode == "EXECUTE" %}checked{% endif %}>
+                EXECUTE
+                <div class="desc">Risky actions can execute directly. Use only in trusted demo or development environments.</div>
+            </label>
+
+            <button type="submit">Save Safety Mode</button>
+        </form>
+    </div>
+</body>
+</html>
