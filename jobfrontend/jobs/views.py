@@ -3,7 +3,8 @@ import os
 from functools import wraps
 from urllib.parse import quote
 from .audit import write_audit_log
-from .safety import get_safety_mode, is_action_allowed
+
+from .safety import get_safety_mode, is_action_allowed, set_safety_mode, action_requires_approval
 
 import requests
 from django.http import HttpResponse, JsonResponse
@@ -228,6 +229,9 @@ def setup_view(request):
             "api_key": ai_api_key,
             "ollama_url": ollama_url or "http://127.0.0.1:11434/api/generate",
         }
+
+        request.session["safety_mode"] = "READ_ONLY"
+
         return redirect("job_list")
 
     except requests.exceptions.RequestException as exc:
@@ -240,6 +244,41 @@ def setup_view(request):
 def logout_view(request):
     request.session.flush()
     return redirect("setup")
+
+@require_zowe_session
+def safety_settings_view(request):
+    current_mode = get_safety_mode(request)
+
+    if request.method == "GET":
+        write_audit_log(
+            request,
+            action="VIEW_SAFETY_SETTINGS",
+            target="Safety Settings",
+            status="ALLOWED",
+            details="Viewed safety settings page",
+        )
+        return render(request, "jobs/safety_settings.html", {
+            "safety_mode": current_mode,
+            "saved": False,
+            "zowe_user": get_zowe_profile(request).get("user"),
+        })
+
+    requested_mode = request.POST.get("safety_mode", "READ_ONLY").strip()
+    new_mode = set_safety_mode(request, requested_mode)
+
+    write_audit_log(
+        request,
+        action="CHANGE_SAFETY_MODE",
+        target="Safety Settings",
+        status="ALLOWED",
+        details=f"Safety mode changed from {current_mode} to {new_mode}",
+    )
+
+    return render(request, "jobs/safety_settings.html", {
+        "safety_mode": new_mode,
+        "saved": True,
+        "zowe_user": get_zowe_profile(request).get("user"),
+    })
 
 @require_zowe_session
 def ai_settings_view(request):
@@ -292,6 +331,14 @@ def ai_settings_view(request):
 def audit_logs(request):
     from .models import AuditLog
 
+    write_audit_log(
+        request,
+        action="VIEW_AUDIT_LOGS",
+        target="Audit Logs",
+        status="ALLOWED",
+        details="Viewed audit log page",
+    )
+
     logs = AuditLog.objects.all().order_by("-created_at")[:100]
 
     return render(request, "jobs/audit_logs.html", {
@@ -311,6 +358,14 @@ def job_list(request):
                 job.get("retcode", ""),
                 job.get("status", ""),
             )
+
+        write_audit_log(
+            request,
+            action="VIEW_JOBS",
+            target="Jobs dashboard",
+            status="ALLOWED",
+            details=f"Viewed {len(jobs)} jobs",
+        )
 
         return render(request, "jobs/job_list.html", {
             "jobs": jobs,
@@ -332,6 +387,13 @@ def job_list(request):
 def view_spool(request, jobid):
     try:
         data = backend_get(request, f"/jobs/{jobid}/spool", timeout=60)
+        write_audit_log(
+            request,
+            action="VIEW_SPOOL",
+            target=jobid,
+            status="ALLOWED",
+            details="Viewed job spool output",
+        )
         return render(request, "jobs/job_spool.html", {
             "jobid": jobid,
             "spool_sections": data.get("sections", []),
@@ -393,6 +455,13 @@ def explorer(request):
 
     except requests.exceptions.RequestException as exc:
         context["error"] = str(exc)
+    write_audit_log(
+        request,
+        action="VIEW_DATASET",
+        target=selected_dataset or pattern,
+        status="ALLOWED",
+        details="Viewed dataset explorer",
+    )
 
     return render(request, "jobs/explorer.html", context)
 
@@ -463,6 +532,13 @@ def uss_browser(request):
 
     except requests.exceptions.RequestException as exc:
         context["error"] = str(exc)
+    write_audit_log(
+        request,
+        action="VIEW_USS",
+        target=context.get("path") or "/",
+        status="ALLOWED",
+        details="Viewed USS browser",
+    )    
 
     return render(request, "jobs/uss_browser.html", context)
 
@@ -480,6 +556,13 @@ def send_spool_to_ollama(request):
             return JsonResponse({"error": "No prompt received"}, status=400)
 
         result = backend_post(request, "/jobs/explain", {"content": prompt}, timeout=300)
+        write_audit_log(
+            request,
+            action="AI_EXPLAIN",
+            target="spool",
+            status="ALLOWED",
+            details="AI explanation requested for spool content",
+        )
         return JsonResponse(result, status=200)
 
     except json.JSONDecodeError:
@@ -501,6 +584,13 @@ def explain_member(request):
             return JsonResponse({"error": "No member content received"}, status=400)
 
         result = backend_post(request, "/datasets/explain", {"content": content}, timeout=300)
+        write_audit_log(
+            request,
+            action="AI_EXPLAIN",
+            target="dataset member",
+            status="ALLOWED",
+            details="AI explanation requested for dataset member",
+        )
         return JsonResponse(result, status=200)
 
     except json.JSONDecodeError:
@@ -518,13 +608,32 @@ def submit_jcl(request):
     try:
         data = json.loads(request.body)
         dataset_member = data.get("dataset_member", "").strip()
+        approved = bool(data.get("approved", False))
 
         if not dataset_member:
             return JsonResponse({"error": "No dataset member provided"}, status=400)
 
         safety_mode = get_safety_mode(request)
 
-        if not is_action_allowed("SUBMIT_JCL", safety_mode):
+        if action_requires_approval("SUBMIT_JCL", safety_mode) and not approved:
+            write_audit_log(
+                request,
+                action="SUBMIT_JCL",
+                target=dataset_member,
+                status="APPROVAL_REQUIRED",
+                details="JCL submit requires explicit approval",
+            )
+            return JsonResponse(
+                {
+                    "error": "Approval required before submitting JCL.",
+                    "safety_mode": safety_mode,
+                    "status": "APPROVAL_REQUIRED",
+                    "requires_approval": True,
+                },
+                status=409,
+            )
+
+        if not is_action_allowed("SUBMIT_JCL", safety_mode, approved=approved):
             write_audit_log(
                 request,
                 action="SUBMIT_JCL",
@@ -567,6 +676,6 @@ def submit_jcl(request):
             action="SUBMIT_JCL",
             target="unknown",
             status="FAILED",
-            details=f"Backend error: {exc}",
+            details=f"Backend error during JCL submit: {exc}",
         )
-        return JsonResponse({"error": f"Failed to submit JCL: {exc}"}, status=500)
+        return JsonResponse({"error": "Failed to submit JCL. Check backend logs."}, status=500)
