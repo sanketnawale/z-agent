@@ -289,6 +289,18 @@ def ai_settings_view(request):
     })
 
 @require_zowe_session
+def audit_logs(request):
+    from .models import AuditLog
+
+    logs = AuditLog.objects.all().order_by("-created_at")[:100]
+
+    return render(request, "jobs/audit_logs.html", {
+        "logs": logs,
+        "zowe_user": get_zowe_profile(request).get("user"),
+        "safety_mode": get_safety_mode(request),
+    })
+
+@require_zowe_session
 def job_list(request):
     try:
         data = backend_get(request, "/jobs", timeout=20)
