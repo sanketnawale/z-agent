@@ -280,3 +280,31 @@ See SECURITY.md.
 This project is licensed under the Apache License 2.0.
 
 See LICENSE.
+
+---
+
+## Screenshots
+
+### Setup Page
+
+![Setup Page](docs/images/setup-page.png)
+
+### Jobs Dashboard
+
+![Jobs Dashboard](docs/images/jobs-dashboard.png)
+
+### Spool Viewer
+
+![Spool Viewer](docs/images/spool-viewer.png)
+
+### Dataset Explorer
+
+![Dataset Explorer](docs/images/dataset-explorer.png)
+
+### USS Browser
+
+![USS Browser](docs/images/uss-browser.png)
+
+### AI Settings
+
+![AI Settings](docs/images/ai-settings.png)
