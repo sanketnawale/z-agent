@@ -2,6 +2,8 @@ import json
 import os
 from functools import wraps
 from urllib.parse import quote
+from .audit import write_audit_log
+from .safety import get_safety_mode, is_action_allowed
 
 import requests
 from django.http import HttpResponse, JsonResponse
@@ -287,6 +289,18 @@ def ai_settings_view(request):
     })
 
 @require_zowe_session
+def audit_logs(request):
+    from .models import AuditLog
+
+    logs = AuditLog.objects.all().order_by("-created_at")[:100]
+
+    return render(request, "jobs/audit_logs.html", {
+        "logs": logs,
+        "zowe_user": get_zowe_profile(request).get("user"),
+        "safety_mode": get_safety_mode(request),
+    })
+
+@require_zowe_session
 def job_list(request):
     try:
         data = backend_get(request, "/jobs", timeout=20)
@@ -504,8 +518,36 @@ def submit_jcl(request):
     try:
         data = json.loads(request.body)
         dataset_member = data.get("dataset_member", "").strip()
+
         if not dataset_member:
             return JsonResponse({"error": "No dataset member provided"}, status=400)
+
+        safety_mode = get_safety_mode(request)
+
+        if not is_action_allowed("SUBMIT_JCL", safety_mode):
+            write_audit_log(
+                request,
+                action="SUBMIT_JCL",
+                target=dataset_member,
+                status="BLOCKED",
+                details=f"JCL submit blocked by safety mode: {safety_mode}",
+            )
+            return JsonResponse(
+                {
+                    "error": f"JCL submit is blocked in {safety_mode} mode.",
+                    "safety_mode": safety_mode,
+                    "status": "BLOCKED",
+                },
+                status=403,
+            )
+
+        write_audit_log(
+            request,
+            action="SUBMIT_JCL",
+            target=dataset_member,
+            status="ALLOWED",
+            details=f"JCL submit allowed by safety mode: {safety_mode}",
+        )
 
         result = backend_post(
             request,
@@ -513,9 +555,18 @@ def submit_jcl(request):
             {"dataset_member": dataset_member},
             timeout=90,
         )
+
         return JsonResponse(result, status=200)
 
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON received"}, status=400)
+
     except requests.exceptions.RequestException as exc:
+        write_audit_log(
+            request,
+            action="SUBMIT_JCL",
+            target="unknown",
+            status="FAILED",
+            details=f"Backend error: {exc}",
+        )
         return JsonResponse({"error": f"Failed to submit JCL: {exc}"}, status=500)

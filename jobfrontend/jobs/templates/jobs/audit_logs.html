@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Z-Agent Audit Logs</title>
+    <style>
+        body {
+            background: #07111f;
+            color: #eaf2ff;
+            font-family: Arial, sans-serif;
+            padding: 24px;
+        }
+        h1 {
+            color: #7dd3fc;
+        }
+        .top {
+            margin-bottom: 20px;
+            color: #cbd5e1;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #0f172a;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 12px;
+            border-bottom: 1px solid #1e293b;
+            text-align: left;
+            font-size: 14px;
+        }
+        th {
+            background: #111827;
+            color: #93c5fd;
+        }
+        .ALLOWED {
+            color: #22c55e;
+            font-weight: bold;
+        }
+        .BLOCKED {
+            color: #ef4444;
+            font-weight: bold;
+        }
+        .FAILED {
+            color: #f97316;
+            font-weight: bold;
+        }
+        a {
+            color: #38bdf8;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Z-Agent Audit Logs</h1>
+
+    <div class="top">
+        User: {{ zowe_user }} |
+        Safety Mode: {{ safety_mode }} |
+        <a href="{% url 'job_list' %}">Back to Jobs</a>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Time</th>
+                <th>User</th>
+                <th>Action</th>
+                <th>Target</th>
+                <th>Safety Mode</th>
+                <th>Status</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.created_at }}</td>
+                <td>{{ log.username }}</td>
+                <td>{{ log.action }}</td>
+                <td>{{ log.target }}</td>
+                <td>{{ log.safety_mode }}</td>
+                <td class="{{ log.status }}">{{ log.status }}</td>
+                <td>{{ log.details }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="7">No audit logs yet.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
