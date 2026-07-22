@@ -1,5 +1,25 @@
 # Changelog
 
+## [v0.5.0-devops-integration-preview] - Unreleased
+
+### Added
+- Pipeline-friendly job summary API
+- Incident summary API
+- Ownership routing example
+- Webhook notification dry-run support
+- DevOps audit action types
+- Jenkins pipeline example
+- GitHub Actions example
+- API curl examples
+- DevOps integration documentation
+- Pipeline examples documentation
+- Incident routing documentation
+
+### Security
+- Webhook notification defaults to dry-run mode
+- Raw spool output is not stored in audit logs
+- Examples use fake URLs, fake tokens, and placeholder secrets only
+
 ## [v0.4.0-open-mainframe-readiness] - Unreleased
 
 ### Added

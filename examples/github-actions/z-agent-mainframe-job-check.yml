@@ -1,0 +1,73 @@
+# z-agent GitHub Actions example (v0.5.0 DevOps Integration Preview)
+#
+# This workflow calls the z-agent job summary API and fails the workflow when
+# an IBM Z job is not safe to continue (safe_to_continue == false).
+#
+# All URLs and tokens are FAKE placeholders. Store real values in GitHub
+# repository secrets (Settings -> Secrets and variables -> Actions).
+# Do not hardcode real IBM Z credentials, real tokens, or private hostnames.
+
+name: z-agent mainframe job check
+
+on:
+  workflow_dispatch:
+    inputs:
+      job_id:
+        description: 'IBM Z job ID to summarize'
+        required: true
+        default: 'JOB12345'
+      job_name:
+        description: 'IBM Z job name'
+        required: true
+        default: 'PAYROLL01'
+
+env:
+  ZAGENT_URL: ${{ secrets.ZAGENT_URL }}
+  ZAGENT_TOKEN: ${{ secrets.ZAGENT_TOKEN }}
+  ZOWE_HOST: ${{ secrets.ZOWE_HOST }}
+  ZOWE_PORT: '10443'
+  ZOWE_USER: ${{ secrets.ZOWE_USER }}
+  ZOWE_PASSWORD: ${{ secrets.ZOWE_PASSWORD }}
+
+jobs:
+  z-agent-job-summary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call z-agent job summary API
+        id: zagent
+        run: |
+          set -e
+          RESPONSE=$(curl -s -X POST "${ZAGENT_URL}/api/devops/job-summary" \
+            -H "Content-Type: application/json" \
+            -H "X-Zowe-Host: ${ZOWE_HOST}" \
+            -H "X-Zowe-Port: ${ZOWE_PORT}" \
+            -H "X-Zowe-User: ${ZOWE_USER}" \
+            -H "X-Zowe-Password: ${ZOWE_PASSWORD}" \
+            -d "{ \"job_id\": \"${{ inputs.job_id }}\", \"job_name\": \"${{ inputs.job_name }}\", \"include_ai_explanation\": true }")
+
+          echo "response=$RESPONSE" >> "$GITHUB_OUTPUT"
+          echo "::notice::z-agent response: $RESPONSE"
+
+          # Parse key fields with python (available on ubuntu-latest).
+          SAFE=$(echo "$RESPONSE" | python -c "import sys,json; print(str(json.load(sys.stdin).get('safe_to_continue')))")
+          STATUS=$(echo "$RESPONSE" | python -c "import sys,json; print(json.load(sys.stdin).get('status','unknown'))")
+          RC=$(echo "$RESPONSE" | python -c "import sys,json; print(json.load(sys.stdin).get('return_code','unknown'))")
+          CAUSE=$(echo "$RESPONSE" | python -c "import sys,json; print(json.load(sys.stdin).get('likely_cause',''))")
+          STEP=$(echo "$RESPONSE" | python -c "import sys,json; print(json.load(sys.stdin).get('suggested_next_step',''))")
+          AUDIT=$(echo "$RESPONSE" | python -c "import sys,json; print(json.load(sys.stdin).get('audit_id',''))")
+
+          echo "## z-agent Job Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| --- | --- |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Job | ${{ inputs.job_name }} (${{ inputs.job_id }}) |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Status | ${STATUS} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Return code | ${RC} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Likely cause | ${CAUSE} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Suggested next step | ${STEP} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Audit ID | ${AUDIT} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Safe to continue | ${SAFE} |" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$SAFE" = "False" ]; then
+            echo "::error::IBM Z job ${{ inputs.job_id }} is not safe to continue (${STATUS} / ${RC})"
+            exit 1
+          fi

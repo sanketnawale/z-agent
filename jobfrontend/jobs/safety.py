@@ -5,6 +5,18 @@ Read/analyze actions (SAFE_READ_ACTIONS) are allowed in every safety mode,
 including READ_ONLY. AI_EXPLAIN_SPOOL is treated as a read-only action because
 it only runs AI analysis over already-available spool text and does not modify
 anything on IBM Z.
+
+DevOps audit action types (v0.5.0):
+
+    DEVOPS_JOB_SUMMARY        pipeline queried a job summary
+    DEVOPS_INCIDENT_SUMMARY   pipeline generated an incident summary
+    DEVOPS_NOTIFY_DRY_RUN     webhook notification dry-run (no network)
+    DEVOPS_NOTIFY_SENT        a real webhook notification was sent (risky)
+    DEVOPS_NOTIFY_FAILED      a real webhook notification failed
+
+DEVOPS_NOTIFY_DRY_RUN is a safe read action (always allowed).
+DEVOPS_NOTIFY_SENT is risky: it sends data to an external webhook and is only
+allowed in EXECUTE mode (or APPROVAL_REQUIRED with explicit approval).
 """
 
 SAFE_READ_ACTIONS = {
@@ -14,6 +26,9 @@ SAFE_READ_ACTIONS = {
     "VIEW_USS",
     "AI_EXPLAIN",
     "AI_EXPLAIN_SPOOL",
+    "DEVOPS_JOB_SUMMARY",
+    "DEVOPS_INCIDENT_SUMMARY",
+    "DEVOPS_NOTIFY_DRY_RUN",
     "VIEW_AUDIT_LOGS",
     "VIEW_SAFETY_SETTINGS",
     "CHANGE_SAFETY_MODE",
@@ -24,6 +39,7 @@ RISKY_ACTIONS = {
     "CANCEL_JOB",
     "DELETE_DATASET",
     "WRITE_USS_FILE",
+    "DEVOPS_NOTIFY_SENT",
 }
 
 SAFETY_MODES = {

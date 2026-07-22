@@ -21,4 +21,7 @@ urlpatterns = [
     path("submit-jcl/", views.submit_jcl, name="submit_jcl"),
     path("audit/", views.audit_logs, name="audit_logs"),
     path("safety/", views.safety_settings_view, name="safety_settings"),
+    path("api/devops/job-summary", views.devops_job_summary, name="devops_job_summary"),
+    path("api/devops/incident-summary", views.devops_incident_summary, name="devops_incident_summary"),
+    path("api/devops/notify", views.devops_notify, name="devops_notify"),
 ]

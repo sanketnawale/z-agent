@@ -68,6 +68,41 @@ def request_headers(request):
     return headers
 
 
+_ZOWE_HEADER_KEYS = (
+    "X-Zowe-Host", "X-Zowe-Port", "X-Zowe-User", "X-Zowe-Password", "X-Zowe-RU",
+)
+_AI_HEADER_KEYS = (
+    "X-AI-Provider", "X-AI-Model", "X-AI-API-Key", "X-Ollama-URL",
+)
+_EXTRA_DEVOPS_HEADER_KEYS = ("X-Ownership-Rules-Path",)
+
+
+def devops_headers(request):
+    """Build headers for DevOps pipeline callers.
+
+    Pipelines pass IBM Z / AI credentials directly via request headers instead
+    of a web session, so we forward the incoming X-Zowe-* / X-AI-* headers and
+    fall back to the session profile only when the header is absent.
+    """
+    headers = request_headers(request)
+    for key in _ZOWE_HEADER_KEYS + _AI_HEADER_KEYS + _EXTRA_DEVOPS_HEADER_KEYS:
+        incoming = request.headers.get(key)
+        if incoming:
+            headers[key] = incoming
+    return headers
+
+
+def devops_backend_post(request, path, payload, timeout=300):
+    response = requests.post(
+        f"{FASTAPI_URL}{path}",
+        json=payload,
+        timeout=timeout,
+        headers=devops_headers(request),
+    )
+    response.raise_for_status()
+    return response.json()
+
+
 def zowe_headers(request):
     return request_headers(request)
 
@@ -756,3 +791,216 @@ def submit_jcl(request):
             details=f"Backend error during JCL submit: {exc}",
         )
         return JsonResponse({"error": "Failed to submit JCL. Check backend logs."}, status=500)
+
+
+# ---------------------------------------------------------------------------
+# v0.5.0 DevOps Integration Preview
+# ---------------------------------------------------------------------------
+
+def _safe_error_json(message="DevOps request could not be processed.", status=500):
+    return JsonResponse({"status": "error", "message": message}, status=status)
+
+
+def _audit_id_for(entry):
+    return f"AUD-{entry.id:06d}" if entry else None
+
+
+@csrf_exempt
+def devops_job_summary(request):
+    """Pipeline-friendly structured job summary proxy (v0.5.0).
+
+    No web session is required: pipelines pass IBM Z / AI headers directly.
+    Writes a DEVOPS_JOB_SUMMARY audit log entry (metadata only) and attaches
+    an audit_id to the response.
+    """
+    if request.method != "POST":
+        return _safe_error_json("Invalid request method", status=405)
+
+    try:
+        data = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return _safe_error_json("Invalid JSON received", status=400)
+
+    job_id = str(data.get("job_id", "")).strip()
+    job_name = str(data.get("job_name", "")).strip()
+    include_ai = bool(data.get("include_ai_explanation", True))
+
+    safety_mode = get_safety_mode(request)
+    if not is_action_allowed("DEVOPS_JOB_SUMMARY", safety_mode):
+        write_audit_log(
+            request, action="DEVOPS_JOB_SUMMARY", target=job_id or "unknown",
+            status="BLOCKED",
+            details=f"Job summary blocked by safety mode: {safety_mode}",
+        )
+        return JsonResponse(
+            {"status": "error", "message": f"Job summary blocked in {safety_mode} mode."},
+            status=403,
+        )
+
+    try:
+        result = devops_backend_post(
+            request, "/api/devops/job-summary",
+            {"job_id": job_id, "job_name": job_name,
+             "include_ai_explanation": include_ai},
+        )
+    except requests.exceptions.RequestException:
+        result = {
+            "job_id": job_id, "job_name": job_name, "status": "UNKNOWN",
+            "return_code": "UNKNOWN", "result": "unknown",
+            "ai_used": False,
+            "message": "Job summary is currently unavailable.",
+            "safe_to_continue": False,
+        }
+
+    ai_used = bool(result.get("ai_used"))
+    audit_status = "ALLOWED" if result.get("status") != "UNKNOWN" else "FAILED"
+    entry = write_audit_log(
+        request, action="DEVOPS_JOB_SUMMARY", target=job_id or "unknown",
+        status=audit_status,
+        details=(f"job_name={job_name or 'n/a'}; ai_used={'yes' if ai_used else 'no'}; "
+                 f"status={result.get('status', 'unknown')}; raw spool not stored"),
+    )
+    result["audit_id"] = _audit_id_for(entry)
+    return JsonResponse(result, status=200)
+
+
+@csrf_exempt
+def devops_incident_summary(request):
+    """Incident first-pass summary proxy (v0.5.0).
+
+    Produces a paste-ready structured summary. No web session required.
+    Writes a DEVOPS_INCIDENT_SUMMARY audit log entry and attaches an audit_id.
+    """
+    if request.method != "POST":
+        return _safe_error_json("Invalid request method", status=405)
+
+    try:
+        data = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return _safe_error_json("Invalid JSON received", status=400)
+
+    job_id = str(data.get("job_id", "")).strip()
+    job_name = str(data.get("job_name", "")).strip()
+    spool_text = str(data.get("spool_text", ""))
+    include_ai = bool(data.get("include_ai_explanation", True))
+
+    safety_mode = get_safety_mode(request)
+    if not is_action_allowed("DEVOPS_INCIDENT_SUMMARY", safety_mode):
+        write_audit_log(
+            request, action="DEVOPS_INCIDENT_SUMMARY", target=job_id or "unknown",
+            status="BLOCKED",
+            details=f"Incident summary blocked by safety mode: {safety_mode}",
+        )
+        return JsonResponse(
+            {"status": "error", "message": f"Incident summary blocked in {safety_mode} mode."},
+            status=403,
+        )
+
+    try:
+        result = devops_backend_post(
+            request, "/api/devops/incident-summary",
+            {"job_id": job_id, "job_name": job_name, "spool_text": spool_text,
+             "include_ai_explanation": include_ai},
+        )
+    except requests.exceptions.RequestException:
+        result = {
+            "title": f"IBM Z job {job_name or job_id} summary unavailable",
+            "severity": "medium",
+            "summary": "z-agent could not generate an incident summary.",
+            "evidence": "",
+            "recommended_owner": "Unknown - configure ownership rules",
+            "suggested_next_step": "Check z-agent backend availability.",
+        }
+
+    entry = write_audit_log(
+        request, action="DEVOPS_INCIDENT_SUMMARY", target=job_id or "unknown",
+        status="ALLOWED",
+        details=(f"job_name={job_name or 'n/a'}; "
+                 f"severity={result.get('severity', 'unknown')}; "
+                 f"raw spool not stored"),
+    )
+    result["audit_id"] = _audit_id_for(entry)
+    return JsonResponse(result, status=200)
+
+
+@csrf_exempt
+def devops_notify(request):
+    """Webhook notification proxy with dry-run safety default (v0.5.0).
+
+    dry_run defaults to True so pipelines never accidentally send real network
+    requests. Real sends (dry_run=False) are gated by the safety mode for the
+    DEVOPS_NOTIFY_SENT risky action. All paths write an audit log entry; raw
+    spool is never stored.
+    """
+    if request.method != "POST":
+        return _safe_error_json("Invalid request method", status=405)
+
+    try:
+        data = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return _safe_error_json("Invalid JSON received", status=400)
+
+    webhook_url = str(data.get("webhook_url", "")).strip()
+    job_id = str(data.get("job_id", "")).strip()
+    job_name = str(data.get("job_name", "")).strip()
+    summary = str(data.get("summary", ""))
+    dry_run = bool(data.get("dry_run", True))
+
+    safety_mode = get_safety_mode(request)
+
+    if dry_run:
+        action = "DEVOPS_NOTIFY_DRY_RUN"
+        if not is_action_allowed(action, safety_mode):
+            write_audit_log(request, action=action, target=job_id or "unknown",
+                            status="BLOCKED",
+                            details=f"Notify dry-run blocked by safety mode: {safety_mode}")
+            return JsonResponse(
+                {"status": "error", "message": f"Notify blocked in {safety_mode} mode."},
+                status=403,
+            )
+        audit_action = "DEVOPS_NOTIFY_DRY_RUN"
+        audit_status = "ALLOWED"
+    else:
+        action = "DEVOPS_NOTIFY_SENT"
+        if not is_action_allowed(action, safety_mode, approved=True):
+            write_audit_log(
+                request, action="DEVOPS_NOTIFY_SENT", target=job_id or "unknown",
+                status="BLOCKED",
+                details=(f"Real webhook notify blocked by safety mode: {safety_mode}; "
+                         "use EXECUTE mode or dry_run=true"),
+            )
+            return JsonResponse(
+                {"status": "error",
+                 "message": (f"Real webhook send is blocked in {safety_mode} mode. "
+                             "Use EXECUTE mode or dry_run=true."),
+                 "dry_run": True},
+                status=403,
+            )
+        audit_action = "DEVOPS_NOTIFY_SENT"
+
+    try:
+        result = devops_backend_post(
+            request, "/api/devops/notify",
+            {"webhook_url": webhook_url, "job_id": job_id, "job_name": job_name,
+             "summary": summary, "dry_run": dry_run},
+        )
+    except requests.exceptions.RequestException:
+        result = {"status": "error",
+                  "message": "Webhook notification service is currently unavailable."}
+        if not dry_run:
+            audit_action = "DEVOPS_NOTIFY_FAILED"
+
+    audit_status = "ALLOWED" if result.get("status") in ("dry_run", "sent") else "FAILED"
+    if not dry_run and result.get("status") == "error":
+        audit_action = "DEVOPS_NOTIFY_FAILED"
+        audit_status = "FAILED"
+
+    entry = write_audit_log(
+        request, action=audit_action, target=job_id or "unknown",
+        status=audit_status,
+        details=(f"job_name={job_name or 'n/a'}; dry_run={'yes' if dry_run else 'no'}; "
+                 f"notify_status={result.get('status', 'unknown')}; "
+                 "no secrets in payload; raw spool not stored"),
+    )
+    result["audit_id"] = _audit_id_for(entry)
+    return JsonResponse(result, status=200)

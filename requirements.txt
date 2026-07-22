@@ -5,3 +5,4 @@ gunicorn
 requests
 python-dotenv
 pydantic
+pyyaml
