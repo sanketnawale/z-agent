@@ -1,0 +1,6 @@
+# CODEOWNERS
+#
+# z-agent code ownership for automatic PR review requests.
+# z-agent does not replace Zowe; it builds on Zowe/zOSMF.
+
+* @sanketnawale

@@ -281,6 +281,28 @@ Future goals include:
 - ZoweX and MCP-style tool integration exploration
 - SMF analytics if authorized access is available
 
+## Open Mainframe Alignment
+
+Z-Agent is designed as an Open Mainframe-aligned project that builds on Zowe/zOSMF and follows CNCF-style maturity practices such as safety, auditability, documentation, governance, and a cloud-native deployment roadmap.
+
+Z-Agent does not replace Zowe. It builds on Zowe/zOSMF to provide a safe, auditable, AI-assisted operations layer for IBM Z jobs, spool output, JCL, datasets, and USS.
+
+Related docs:
+
+- docs/open-mainframe-alignment.md
+- docs/comparison-with-zowe.md
+- docs/landscape.md
+- docs/use-cases.md
+- docs/sandbox-proposal-draft.md
+
+Governance and community:
+
+- GOVERNANCE.md
+- MAINTAINERS.md
+- TESTERS.md
+- CONTRIBUTING.md
+- SECURITY.md
+
 ---
 
 ## Project Direction
