@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>z-agent Performance Insights</title>
+    <style>
+        :root {
+            --bg: #0b1118;
+            --panel: rgba(16, 24, 36, 0.94);
+            --line: rgba(255,255,255,.08);
+            --text: #e9f4ff;
+            --muted: #96abc4;
+            --cyan: #56d7ff;
+            --green: #46d38a;
+            --amber: #ffb35c;
+            --red: #ff6b76;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: Inter, system-ui, sans-serif;
+            color: var(--text);
+            background: linear-gradient(180deg, var(--bg), #050910 100%);
+            padding: 18px;
+        }
+        .wrap { max-width: 1100px; margin: 0 auto; }
+        .topbar, .card {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            box-shadow: 0 18px 48px rgba(0,0,0,.35);
+            backdrop-filter: blur(14px);
+        }
+        .topbar { padding: 14px 18px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .brand small { display: block; color: var(--muted); text-transform: uppercase; letter-spacing: .16em; font-size: 11px; }
+        .brand strong { font-size: 20px; }
+        .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .btn, button.btn {
+            min-height: 38px; padding: 0 14px; border-radius: 999px;
+            border: 1px solid rgba(86,215,255,.22); font-weight: 700;
+            background: rgba(255,255,255,.03); color: var(--text); cursor: pointer; text-decoration: none;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .btn.primary { background: linear-gradient(135deg, var(--cyan), #8be6ff); border: 0; color: #08111b; }
+        .panel { padding: 18px; margin-bottom: 16px; }
+        h1 { margin: 0 0 10px; font-size: 1.6rem; }
+        label { display: block; color: var(--muted); margin: 10px 0 4px; font-size: 13px; }
+        textarea, input {
+            width: 100%; padding: 12px; border-radius: 12px;
+            border: 1px solid var(--line); background: rgba(255,255,255,.04);
+            color: var(--text); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.8px;
+        }
+        textarea { min-height: 220px; resize: vertical; }
+        .row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+        .note { color: var(--muted); font-size: 12.5px; line-height: 1.6; margin-top: 12px; }
+        .disclaimer {
+            border: 1px dashed rgba(255,179,92,.4); background: rgba(255,179,92,.06);
+            padding: 12px; border-radius: 12px; color: var(--amber); font-size: 12.5px; line-height: 1.55;
+        }
+        .result { white-space: pre-wrap; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; line-height: 1.6; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        th, td { padding: 10px; border-bottom: 1px solid var(--line); text-align: left; font-size: 12.8px; }
+        th { color: var(--cyan); }
+        .grade-A { color: var(--green); font-weight: 800; }
+        .grade-B { color: var(--green); font-weight: 700; }
+        .grade-C { color: var(--cyan); font-weight: 700; }
+        .grade-AVG { color: var(--muted); font-weight: 700; }
+        .grade-D { color: var(--amber); font-weight: 700; }
+        .grade-E { color: var(--red); font-weight: 700; }
+        .grade-F { color: var(--red); font-weight: 800; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="topbar">
+        <div class="brand">
+            <small>v0.7.0 Performance Insights Preview</small>
+            <strong>IBM Z Ratio Analysis</strong>
+        </div>
+        <div class="actions">
+            <a class="btn" href="/jobs/">Jobs</a>
+            <a class="btn" href="/audit/">Audit</a>
+            <a class="btn" href="/logout/">Logout</a>
+        </div>
+    </div>
+
+    <div class="card panel">
+        <h1>Performance Insights</h1>
+        <p class="note">
+            Provide statistical metrics as JSON. z-agent calculates mainframe
+            efficiency ratios and assigns local/demo grades. AI explanation is
+            advisory only.
+        </p>
+        <div class="disclaimer">
+            The v0.7.0 Performance Insights Preview calculates ratios from provided
+            statistical data and uses local/demo thresholds. It does not claim to
+            compare against an external benchmark population unless an authorized
+            benchmark dataset is configured in a future version.
+        </div>
+
+        <label for="metrics">Metrics JSON</label>
+        <textarea id="metrics">{
+  "system_name": "demo-lpar",
+  "period": "2026-07-demo",
+  "metrics": {
+    "cpu_time_used": 7200,
+    "total_cpu_capacity": 14400,
+    "online_cpu_time_used": 2500,
+    "total_transactions": 100000,
+    "batch_cpu_time_used": 4700,
+    "batch_jobs_completed": 1200,
+    "total_batch_window_minutes": 360,
+    "io_operations": 850000,
+    "workload_processed": 500000,
+    "cost": 1200
+  },
+  "include_ai_explanation": true
+}</textarea>
+
+        <div class="row">
+            <label style="display: inline-flex; align-items: center; gap: 6px; margin: 0;">
+                <input type="checkbox" id="include-ai" checked style="width: auto; min-height: 0; padding: 0;">
+                Include AI explanation
+            </label>
+            <button class="btn primary" id="analyze-btn" onclick="analyzePerformance()">Analyze Performance</button>
+        </div>
+    </div>
+
+    <div class="card panel" id="result-panel" style="display:none;">
+        <h1>Result</h1>
+        <div id="result-meta"></div>
+        <table id="ratio-table">
+            <thead><tr><th>Ratio</th><th>Value</th><th>Grade</th><th>Score</th><th>Interpretation</th></tr></thead>
+            <tbody></tbody>
+        </table>
+        <div id="ai-section"></div>
+        <div class="disclaimer" id="disclaimer"></div>
+    </div>
+</div>
+
+<script>
+function escapeHtml(v) {
+    const d = document.createElement('div');
+    d.textContent = String(v == null ? '' : v);
+    return d.innerHTML;
+}
+function gradeClass(g) {
+    const map = { A: 'grade-A', B: 'grade-B', C: 'grade-C', AVG: 'grade-AVG', D: 'grade-D', E: 'grade-E', F: 'grade-F' };
+    return map[g] || 'grade-AVG';
+}
+async function analyzePerformance() {
+    const btn = document.getElementById('analyze-btn');
+    const metricsEl = document.getElementById('metrics');
+    const includeAi = document.getElementById('include-ai').checked;
+    const panel = document.getElementById('result-panel');
+    const meta = document.getElementById('result-meta');
+    const tbody = document.querySelector('#ratio-table tbody');
+    const aiSection = document.getElementById('ai-section');
+    const disclaimer = document.getElementById('disclaimer');
+
+    btn.disabled = true;
+    meta.textContent = 'Analyzing metrics...';
+    tbody.innerHTML = '';
+    aiSection.innerHTML = '';
+    panel.style.display = 'block';
+
+    let payload;
+    try {
+        payload = JSON.parse(metricsEl.value);
+    } catch (e) {
+        meta.textContent = 'Invalid JSON metrics: ' + e.message;
+        btn.disabled = false;
+        return;
+    }
+    payload.include_ai_explanation = includeAi;
+
+    try {
+        const resp = await fetch('/api/performance/insights', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const result = await resp.json();
+
+        meta.innerHTML = '<strong>System:</strong> ' + escapeHtml(result.system_name) +
+            ' &nbsp; <strong>Period:</strong> ' + escapeHtml(result.period) +
+            ' &nbsp; <strong>Overall grade:</strong> <span class="' + gradeClass(result.overall_grade) + '">' + escapeHtml(result.overall_grade) + '</span>' +
+            ' (' + escapeHtml(result.overall_score) + ')' +
+            ' &nbsp; <strong>Benchmark mode:</strong> ' + escapeHtml(result.benchmark_mode) +
+            ' &nbsp; <strong>Audit ID:</strong> ' + escapeHtml(result.audit_id) +
+            '<br><br>' + escapeHtml(result.summary) +
+            ' &nbsp; <em>Improvement opportunity:</em> ' + escapeHtml(result.estimated_improvement_opportunity);
+
+        const rows = result.ratios || [];
+        tbody.innerHTML = rows.map(function (r) {
+            return '<tr><td>' + escapeHtml(r.name) + '</td><td>' + escapeHtml(r.value) + '</td>' +
+                '<td class="' + gradeClass(r.grade) + '">' + escapeHtml(r.grade) + '</td>' +
+                '<td>' + escapeHtml(r.score) + '</td><td>' + escapeHtml(r.interpretation) + '</td></tr>';
+        }).join('');
+
+        const ai = result.ai_explanation || {};
+        if (ai.available) {
+            let html = '<h2>AI Explanation <span style="font-size:12px;color:var(--muted);font-weight:400;">(advisory only)</span></h2>';
+            html += '<p class="note"><strong>Summary:</strong> ' + escapeHtml(ai.summary) + '</p>';
+            html += listBlock('Key findings', ai.key_findings);
+            html += listBlock('Possible optimization areas', ai.possible_optimization_areas);
+            html += listBlock('Safe next steps', ai.safe_next_steps);
+            html += '<p class="note"><strong>Limitations:</strong> ' + escapeHtml(ai.limitations) + '</p>';
+            aiSection.innerHTML = html;
+        } else {
+            aiSection.innerHTML = '<p class="note"><em>' + escapeHtml(ai.message || 'AI explanation unavailable.') + '</em></p>';
+        }
+
+        disclaimer.textContent = result.disclaimer || '';
+    } catch (e) {
+        meta.textContent = 'Failed to reach z-agent: ' + e.message;
+    } finally {
+        btn.disabled = false;
+    }
+}
+function listBlock(title, items) {
+    if (!items || !items.length) return '';
+    return '<p class="note"><strong>' + escapeHtml(title) + ':</strong></p><ul>' +
+        items.map(function (i) { return '<li>' + escapeHtml(i) + '</li>'; }).join('') + '</ul>';
+}
+</script>
+</body>
+</html>

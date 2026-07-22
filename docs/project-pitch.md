@@ -79,6 +79,7 @@ Zowe's access role.
 - Pipeline APIs: job summary, incident summary, dry-run webhook notify
 - Jenkins / GitHub Actions / curl examples
 - Docker Compose deployment
+- Performance Insights preview: ratio analysis from provided statistical metrics with advisory AI explanation (local/demo thresholds only — not a benchmark comparison)
 
 ## What makes it different
 
@@ -106,10 +107,11 @@ See `docs/demo-script.md` for a full narrated 3–5 minute demo.
 ## Current status
 
 - v0.1.0 public preview → v0.5.0 DevOps integration preview complete
-- v0.6.0 Sandbox candidate package (this milestone)
+- v0.6.0 Sandbox candidate package complete
+- v0.7.0 Performance Insights preview (this milestone)
 - Not production-ready
 - Single maintainer today; community growth is a goal
-- 68+ tests passing
+- 90+ tests passing
 
 ## What feedback we want
 

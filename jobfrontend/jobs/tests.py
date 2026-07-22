@@ -364,3 +364,129 @@ class DevOpsNotifyTests(TestCase):
         self.assertEqual(response.status_code, 403)
         audit = AuditLog.objects.filter(action="DEVOPS_NOTIFY_SENT", status="BLOCKED").first()
         self.assertIsNotNone(audit)
+
+
+# ---------------------------------------------------------------------------
+# v0.7.0 Performance Insights tests
+# ---------------------------------------------------------------------------
+
+_PERF_OK = {
+    "system_name": "demo-lpar", "period": "2026-07-demo",
+    "overall_grade": "C", "overall_score": 1,
+    "summary": "The system appears slightly above average based on the provided statistical ratios.",
+    "ratios": [
+        {"name": "CPU Utilization Ratio", "value": 0.5, "grade": "AVG", "score": 0,
+         "interpretation": "CPU utilization is within the average range."},
+        {"name": "Batch Efficiency Ratio", "value": 3.33, "grade": "C", "score": 1,
+         "interpretation": "Batch processing efficiency is slightly above average."},
+    ],
+    "estimated_improvement_opportunity": "may save about 6% with optimization",
+    "benchmark_mode": "local-scale-only",
+    "ai_explanation": {"available": True,
+                       "summary": "Advisory summary.",
+                       "key_findings": ["batch above average"],
+                       "possible_optimization_areas": ["review CPU"],
+                       "safe_next_steps": ["monitor"],
+                       "limitations": "preview thresholds only"},
+    "disclaimer": "The v0.7.0 Performance Insights Preview ...",
+}
+
+_PERF_AI_UNAVAILABLE = {
+    "system_name": "demo-lpar", "period": "2026-07-demo",
+    "overall_grade": "C", "overall_score": 1, "ratios": [],
+    "benchmark_mode": "local-scale-only",
+    "ai_explanation": {"available": False,
+                       "message": "AI explanation unavailable. Ratio calculations returned without AI explanation."},
+}
+
+
+def _perf_post(payload, safety_mode="EXECUTE"):
+    from django.test import Client
+    from importlib import import_module
+    from django.conf import settings
+    import json as _json
+
+    client = Client()
+    engine = import_module(settings.SESSION_ENGINE)
+    session = engine.SessionStore()
+    session["safety_mode"] = safety_mode
+    session.save()
+    client.cookies[settings.SESSION_COOKIE_NAME] = session.session_key
+    return client.post("/api/performance/insights", data=_json.dumps(payload),
+                       content_type="application/json")
+
+
+class PerformanceInsightsEndpointTests(TestCase):
+    def test_success_path_creates_audit_log(self):
+        import unittest.mock as mock
+        with mock.patch("jobs.views.devops_backend_post", return_value=dict(_PERF_OK)):
+            response = _perf_post({
+                "system_name": "demo-lpar", "period": "2026-07-demo",
+                "metrics": {"cpu_time_used": 7200, "total_cpu_capacity": 14400,
+                            "workload_processed": 500000, "cost": 1200},
+                "include_ai_explanation": True,
+            })
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["overall_grade"], "C")
+        self.assertEqual(body["benchmark_mode"], "local-scale-only")
+        self.assertTrue(body["ai_explanation"]["available"])
+        self.assertRegex(body["audit_id"], r"^AUD-\d{6}$")
+        audit = AuditLog.objects.filter(action="PERFORMANCE_INSIGHTS_ANALYSIS").order_by("-id").first()
+        self.assertIsNotNone(audit)
+        self.assertEqual(audit.status, "ALLOWED")
+        self.assertEqual(audit.target, "demo-lpar")
+        self.assertIn("raw values not stored", audit.details)
+        self.assertIn("benchmark_mode=local-scale-only", audit.details)
+
+    def test_ai_unavailable_path_returns_ratios(self):
+        import unittest.mock as mock
+        with mock.patch("jobs.views.devops_backend_post", return_value=dict(_PERF_AI_UNAVAILABLE)):
+            response = _perf_post({
+                "system_name": "demo-lpar", "period": "2026-07-demo",
+                "metrics": {"cpu_time_used": 7200, "total_cpu_capacity": 14400},
+                "include_ai_explanation": True,
+            })
+        body = response.json()
+        self.assertFalse(body["ai_explanation"]["available"])
+        self.assertEqual(body["overall_grade"], "C")
+
+    def test_read_only_allows_performance_insights(self):
+        import unittest.mock as mock
+        with mock.patch("jobs.views.devops_backend_post", return_value=dict(_PERF_OK)):
+            response = _perf_post(
+                {"system_name": "demo-lpar", "period": "p",
+                 "metrics": {"cpu_time_used": 1}, "include_ai_explanation": False},
+                safety_mode="READ_ONLY",
+            )
+        self.assertEqual(response.status_code, 200)
+        audit = AuditLog.objects.filter(action="PERFORMANCE_INSIGHTS_ANALYSIS").first()
+        self.assertIsNotNone(audit)
+        self.assertEqual(audit.safety_mode, "READ_ONLY")
+
+    def test_raw_metrics_not_stored_in_audit(self):
+        import unittest.mock as mock
+        # Sensitive-looking metric value that must never appear in audit details.
+        metrics = {"cpu_time_used": 987654321, "total_cpu_capacity": 10000,
+                   "cost": 42, "workload_processed": 500000}
+        with mock.patch("jobs.views.devops_backend_post", return_value=dict(_PERF_OK)):
+            _perf_post({"system_name": "demo-lpar", "period": "p",
+                        "metrics": metrics, "include_ai_explanation": False})
+        for row in AuditLog.objects.filter(action="PERFORMANCE_INSIGHTS_ANALYSIS"):
+            self.assertNotIn("987654321", row.details or "")
+            self.assertNotIn("42", row.details or "")
+
+    def test_invalid_metrics_return_safe_error(self):
+        from django.test import Client
+        from importlib import import_module
+        from django.conf import settings
+        client = Client()
+        engine = import_module(settings.SESSION_ENGINE)
+        session = engine.SessionStore()
+        session["safety_mode"] = "EXECUTE"
+        session.save()
+        client.cookies[settings.SESSION_COOKIE_NAME] = session.session_key
+        response = client.post("/api/performance/insights", data="not json",
+                               content_type="application/json")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json()["status"], "error")

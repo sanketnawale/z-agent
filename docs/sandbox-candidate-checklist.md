@@ -50,6 +50,9 @@ acceptance.
 - [x] JCL submit with approval gating
 - [x] AI provider and model switching (rule-based, Ollama, Claude, OpenAI, Gemini)
 - [x] Docker Compose deployment with local Ollama
+- [x] Performance Insights preview (v0.7.0): ratio analysis from provided statistical metrics, local/demo thresholds, advisory AI explanation
+- [ ] Real SMF/RMF integration (future)
+- [ ] Authorized benchmark dataset comparison (future)
 
 ## Safety and audit
 
@@ -123,6 +126,8 @@ acceptance.
 - [x] Tests for DevOps endpoints + audit + dry-run
 - [x] Tests asserting examples contain no real secrets
 - [x] Tests asserting raw spool not stored in audit logs
+- [x] Tests for Performance Insights ratios, grade mapping, safe division, report builder, AI parsing
+- [x] Tests asserting raw metrics not stored in audit logs
 
 ## Known limitations
 

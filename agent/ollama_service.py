@@ -30,7 +30,7 @@ from typing import Any, Dict
 
 import requests
 
-from .prompts import build_spool_explanation_prompt
+from .prompts import build_spool_explanation_prompt, build_performance_insights_prompt
 
 _VALID_CONFIDENCE = {"low", "medium", "high"}
 
@@ -210,3 +210,76 @@ def _fallback_parse(raw_text: str):
         fields["suggested_next_step"],
         fields["confidence"] or "low",
     )
+
+
+_PERFORMANCE_SAFE_ERROR = {
+    "available": False,
+    "message": "AI explanation unavailable. Ratio calculations returned without AI explanation.",
+}
+
+
+def explain_performance_insights_with_ollama(
+    report: Dict[str, Any],
+    ai_config: Dict[str, Any] | None = None,
+) -> Dict[str, Any]:
+    """Call Ollama with a performance insights report and return a structured
+    advisory explanation. Never raises; returns a safe error dict on failure.
+    """
+    try:
+        model = _ai_config_value(ai_config, "model") or _resolve_model("")
+        ollama_url = _ai_config_value(ai_config, "ollama_url") or _resolve_ollama_url("")
+
+        prompt = build_performance_insights_prompt(json.dumps(report, default=str))
+
+        response = requests.post(
+            ollama_url,
+            json={
+                "model": model,
+                "prompt": prompt,
+                "stream": False,
+                "keep_alive": "15m",
+                "options": {"temperature": 0.2},
+            },
+            timeout=(_CONNECT_TIMEOUT, _READ_TIMEOUT),
+        )
+        response.raise_for_status()
+        data = response.json()
+        raw_text = (data.get("response") or "").strip()
+        if not raw_text:
+            return dict(_PERFORMANCE_SAFE_ERROR)
+    except requests.exceptions.RequestException:
+        return dict(_PERFORMANCE_SAFE_ERROR)
+    except Exception:
+        return dict(_PERFORMANCE_SAFE_ERROR)
+
+    parsed = _try_parse_json(raw_text)
+    if isinstance(parsed, dict):
+        return {
+            "available": True,
+            "summary": str(parsed.get("summary") or "").strip()
+                or "AI explanation produced no summary.",
+            "key_findings": _as_str_list(parsed.get("key_findings")),
+            "possible_optimization_areas": _as_str_list(parsed.get("possible_optimization_areas")),
+            "safe_next_steps": _as_str_list(parsed.get("safe_next_steps")),
+            "limitations": str(parsed.get("limitations") or "").strip()
+                or "AI limitations note was not provided.",
+            "model": model,
+        }
+
+    return {
+        "available": True,
+        "summary": raw_text or "AI explanation produced no summary.",
+        "key_findings": [],
+        "possible_optimization_areas": [],
+        "safe_next_steps": [],
+        "limitations": "AI response was not in structured JSON form; raw text returned as summary.",
+        "model": model,
+    }
+
+
+def _as_str_list(value: Any) -> List[str]:
+    if isinstance(value, list):
+        return [str(item) for item in value]
+    if isinstance(value, str) and value.strip():
+        return [value.strip()]
+    return []

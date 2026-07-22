@@ -36,6 +36,10 @@ production tool.
   use their own non-production credentials.
 - **No real SMF analytics yet.** SMF telemetry is a future direction, gated on
   authorized access and an explicit safety model.
+- **Performance Insights uses local/demo thresholds only.** The v0.7.0
+  Performance Insights Preview calculates ratios from provided statistical
+  metrics and uses local/demo thresholds. It does NOT claim external benchmark
+  comparison; real benchmark comparison and SMF/RMF integration are future work.
 - **No role-based access control yet.** Safety modes govern sessions, but there
   is no per-user role model today.
 

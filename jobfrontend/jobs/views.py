@@ -1004,3 +1004,88 @@ def devops_notify(request):
     )
     result["audit_id"] = _audit_id_for(entry)
     return JsonResponse(result, status=200)
+
+
+# ---------------------------------------------------------------------------
+# v0.7.0 Performance Insights Preview
+# ---------------------------------------------------------------------------
+
+@csrf_exempt
+def performance_insights_api(request):
+    """API proxy for performance insights (v0.7.0).
+
+    No web session required for the API (pipelines pass headers). Writes a
+    PERFORMANCE_INSIGHTS_ANALYSIS audit log entry with metadata only (system
+    name, period, ratio names, ai_used, benchmark_mode) — raw metrics are
+    never stored.
+    """
+    if request.method != "POST":
+        return _safe_error_json("Invalid request method", status=405)
+    try:
+        data = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return _safe_error_json("Invalid JSON received", status=400)
+
+    system_name = str(data.get("system_name", "")).strip()
+    period = str(data.get("period", "")).strip()
+    metrics = data.get("metrics", {})
+    if not isinstance(metrics, dict):
+        metrics = {}
+    include_ai = bool(data.get("include_ai_explanation", True))
+
+    safety_mode = get_safety_mode(request)
+    if not is_action_allowed("PERFORMANCE_INSIGHTS_ANALYSIS", safety_mode):
+        write_audit_log(
+            request, action="PERFORMANCE_INSIGHTS_ANALYSIS",
+            target=system_name or "unknown", status="BLOCKED",
+            details=f"Performance insights blocked by safety mode: {safety_mode}",
+        )
+        return JsonResponse(
+            {"status": "error",
+             "message": f"Performance insights blocked in {safety_mode} mode."},
+            status=403,
+        )
+
+    try:
+        result = devops_backend_post(
+            request, "/api/performance/insights",
+            {"system_name": system_name, "period": period, "metrics": metrics,
+             "include_ai_explanation": include_ai},
+        )
+    except requests.exceptions.RequestException:
+        result = {
+            "system_name": system_name, "period": period,
+            "overall_grade": "AVG", "overall_score": 0,
+            "summary": "Performance insights are currently unavailable.",
+            "ratios": [], "benchmark_mode": "local-scale-only",
+            "ai_explanation": {"available": False,
+                               "message": "AI explanation unavailable."},
+        }
+
+    ai_available = bool(result.get("ai_explanation", {}).get("available"))
+    applicable_benchmark_mode = str(result.get("benchmark_mode", "local-scale-only"))
+
+    # Build safe audit metadata. Never store raw metric values.
+    from agent.performance_insights import ratio_names, metrics_summary_for_audit
+    names = ratio_names(result)
+    meta = metrics_summary_for_audit(metrics)
+
+    entry = write_audit_log(
+        request, action="PERFORMANCE_INSIGHTS_ANALYSIS",
+        target=system_name or "unknown",
+        status="ALLOWED" if "ratios" in result else "FAILED",
+        details=(f"period={period or 'n/a'}; ratios={','.join(names)}; "
+                 f"ai_used={'yes' if ai_available else 'no'}; "
+                 f"benchmark_mode={applicable_benchmark_mode}; {meta}"),
+    )
+    result["audit_id"] = _audit_id_for(entry)
+    return JsonResponse(result, status=200)
+
+
+@require_zowe_session
+def performance_insights_view(request):
+    """Simple UI page for the Performance Insights Preview (v0.7.0)."""
+    return render(request, "jobs/performance_insights.html", {
+        "zowe_user": get_zowe_profile(request).get("user") if get_zowe_profile(request) else None,
+        "safety_mode": get_safety_mode(request),
+    })

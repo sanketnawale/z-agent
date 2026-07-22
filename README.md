@@ -181,6 +181,25 @@ See:
 
 ---
 
+## Performance Insights Preview
+
+z-agent can calculate mainframe performance insight ratios from authorized
+statistical metrics and return an operations-friendly report. The first
+preview supports local/demo thresholding only and does not claim external
+benchmark comparison.
+
+Future versions may integrate with authorized SMF/RMF data sources and
+benchmark datasets.
+
+See:
+
+- docs/performance-insights.md
+- docs/performance-ratios.md
+- docs/performance-data-handling.md
+- examples/performance
+
+---
+
 ## Current Features
 
 - Browser-based IBM Z setup page
@@ -313,6 +332,9 @@ More documentation is available in the docs folder:
 - docs/devops-integration.md
 - docs/pipeline-examples.md
 - docs/incident-routing.md
+- docs/performance-insights.md
+- docs/performance-ratios.md
+- docs/performance-data-handling.md
 - docs/known-limitations.md
 - docs/release-checklist.md
 - docs/sandbox-candidate-checklist.md
