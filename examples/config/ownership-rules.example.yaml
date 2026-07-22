@@ -1,0 +1,26 @@
+# z-agent ownership routing rules (EXAMPLE - safe to commit)
+#
+# Copy this file to a private location and point OWNERSHIP_RULES_PATH at it.
+# Do not put real company emails, private hostnames, or real webhook URLs in
+# the committed example.
+#
+# z-agent maps a job name to a team/notify entry using fnmatch wildcards.
+# If no rule matches, the recommended owner is:
+#   "Unknown - configure ownership rules"
+
+ownership_rules:
+  - job_pattern: "PAY*"
+    team: "Payroll Team"
+    notify:
+      email: "payroll-ops@example.org"
+      webhook: "https://example.org/webhook/payroll"
+
+  - job_pattern: "BILL*"
+    team: "Billing Team"
+    notify:
+      email: "billing-ops@example.org"
+
+  - job_pattern: "DEV*"
+    team: "Development Team"
+    notify:
+      email: "dev-mainframe@example.org"

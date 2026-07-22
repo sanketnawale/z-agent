@@ -205,3 +205,162 @@ class ExplainSpoolEndpointTests(TestCase):
         body = response.json()
         self.assertEqual(body["status"], "error")
         self.assertFalse(body["ai_used"])
+
+
+_JOB_SUMMARY_OK = {
+    "job_id": "JOB12345", "job_name": "PAYROLL01", "status": "FAILED",
+    "return_code": "RC=12", "result": "failure",
+    "likely_cause": "Input dataset allocation failure",
+    "evidence": "Spool contains a dataset allocation failure message.",
+    "suggested_next_step": "Verify the DD statement and dataset name.",
+    "confidence": "medium", "ai_used": True, "safe_to_continue": False,
+}
+
+_INCIDENT_OK = {
+    "title": "IBM Z job PAYROLL01 failed with RC=12", "severity": "medium",
+    "summary": "The job failed due to a likely input dataset allocation issue.",
+    "evidence": "Spool contains a dataset allocation failure message.",
+    "recommended_owner": "Payroll Team",
+    "suggested_next_step": "Verify the DD statement and dataset availability.",
+}
+
+_NOTIFY_DRY_RUN_OK = {
+    "status": "dry_run",
+    "message": "Notification payload generated but not sent.",
+    "payload": {"job_id": "JOB12345", "job_name": "PAYROLL01",
+                "summary": "Job failed with RC=12", "source": "z-agent"},
+}
+
+
+def _devops_post(payload, url="/api/devops/job-summary"):
+    from django.test import Client
+    from importlib import import_module
+    from django.conf import settings
+    import json as _json
+
+    client = Client()
+    engine = import_module(settings.SESSION_ENGINE)
+    session = engine.SessionStore()
+    session["safety_mode"] = "EXECUTE"
+    session.save()
+    client.cookies[settings.SESSION_COOKIE_NAME] = session.session_key
+    return client.post(url, data=_json.dumps(payload), content_type="application/json")
+
+
+class DevOpsJobSummaryTests(TestCase):
+    def test_success_path_creates_audit_log(self):
+        import unittest.mock as mock
+        with mock.patch("jobs.views.devops_backend_post", return_value=dict(_JOB_SUMMARY_OK)):
+            response = _devops_post(
+                {"job_id": "JOB12345", "job_name": "PAYROLL01",
+                 "include_ai_explanation": True},
+                url="/api/devops/job-summary",
+            )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["status"], "FAILED")
+        self.assertEqual(body["return_code"], "RC=12")
+        self.assertFalse(body["safe_to_continue"])
+        self.assertRegex(body["audit_id"], r"^AUD-\d{6}$")
+        audit = AuditLog.objects.filter(action="DEVOPS_JOB_SUMMARY").order_by("-id").first()
+        self.assertIsNotNone(audit)
+        self.assertEqual(audit.status, "ALLOWED")
+        self.assertEqual(audit.target, "JOB12345")
+
+    def test_ai_unavailable_path_returns_basic_summary(self):
+        import unittest.mock as mock
+        basic = {"job_id": "JOB12345", "status": "FAILED", "return_code": "RC=12",
+                 "result": "failure", "ai_used": False, "safe_to_continue": False}
+        with mock.patch("jobs.views.devops_backend_post", return_value=basic):
+            response = _devops_post({"job_id": "JOB12345"}, url="/api/devops/job-summary")
+        body = response.json()
+        self.assertFalse(body["ai_used"])
+        self.assertFalse(body["safe_to_continue"])
+
+
+class DevOpsIncidentSummaryTests(TestCase):
+    def test_incident_summary_creates_audit(self):
+        import unittest.mock as mock
+        with mock.patch("jobs.views.devops_backend_post", return_value=dict(_INCIDENT_OK)):
+            response = _devops_post(
+                {"job_id": "JOB12345", "job_name": "PAYROLL01", "include_ai_explanation": False},
+                url="/api/devops/incident-summary",
+            )
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertIn("RC=12", body["title"])
+        self.assertEqual(body["recommended_owner"], "Payroll Team")
+        self.assertRegex(body["audit_id"], r"^AUD-\d{6}$")
+        audit = AuditLog.objects.filter(action="DEVOPS_INCIDENT_SUMMARY").first()
+        self.assertIsNotNone(audit)
+
+    def test_incident_audit_does_not_store_raw_spool(self):
+        import unittest.mock as mock
+        secret = "password=topsecretvalue"
+        with mock.patch("jobs.views.devops_backend_post", return_value=dict(_INCIDENT_OK)):
+            _devops_post(
+                {"job_id": "JOBSEC", "job_name": "SEC", "spool_text": secret,
+                 "include_ai_explanation": False},
+                url="/api/devops/incident-summary",
+            )
+        for row in AuditLog.objects.filter(action="DEVOPS_INCIDENT_SUMMARY"):
+            combined = f"{row.target or ''} {row.details or ''}"
+            self.assertNotIn("topsecretvalue", combined)
+
+
+class DevOpsNotifyTests(TestCase):
+    def test_dry_run_does_not_send_and_creates_audit(self):
+        import unittest.mock as mock
+        with mock.patch("jobs.views.devops_backend_post", return_value=dict(_NOTIFY_DRY_RUN_OK)) \
+                as posted:
+            response = _devops_post(
+                {"webhook_url": "https://example.org/webhook", "job_id": "JOB12345",
+                 "job_name": "PAYROLL01", "summary": "Job failed with RC=12",
+                 "dry_run": True},
+                url="/api/devops/notify",
+            )
+        posted.assert_called_once()
+        sent_payload = posted.call_args.args[2]
+        self.assertTrue(sent_payload["dry_run"])
+        body = response.json()
+        self.assertEqual(body["status"], "dry_run")
+        self.assertNotIn("token", body["payload"])
+        audit = AuditLog.objects.filter(action="DEVOPS_NOTIFY_DRY_RUN").first()
+        self.assertIsNotNone(audit)
+        self.assertEqual(audit.status, "ALLOWED")
+
+    def test_dry_run_is_default_when_omitted(self):
+        import unittest.mock as mock
+        captured = {}
+        def fake_post(*a, **k):
+            captured["payload"] = a[2]
+            return dict(_NOTIFY_DRY_RUN_OK)
+        with mock.patch("jobs.views.devops_backend_post", side_effect=fake_post):
+            response = _devops_post(
+                {"webhook_url": "https://example.org/webhook", "job_id": "JOB1",
+                 "summary": "fail"},
+                url="/api/devops/notify",
+            )
+        self.assertTrue(captured["payload"]["dry_run"])
+        self.assertEqual(response.json()["status"], "dry_run")
+
+    def test_real_send_blocked_in_read_only(self):
+        from django.test import Client
+        from importlib import import_module
+        from django.conf import settings
+        import json as _json
+        client = Client()
+        engine = import_module(settings.SESSION_ENGINE)
+        session = engine.SessionStore()
+        session["safety_mode"] = "READ_ONLY"
+        session.save()
+        client.cookies[settings.SESSION_COOKIE_NAME] = session.session_key
+        response = client.post(
+            "/api/devops/notify",
+            data=_json.dumps({"webhook_url": "https://example.org/wh",
+                             "job_id": "JOB1", "dry_run": False}),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 403)
+        audit = AuditLog.objects.filter(action="DEVOPS_NOTIFY_SENT", status="BLOCKED").first()
+        self.assertIsNotNone(audit)

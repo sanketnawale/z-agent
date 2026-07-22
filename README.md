@@ -157,6 +157,30 @@ See:
 
 ---
 
+## DevOps Integration Preview
+
+z-agent provides pipeline-friendly APIs that can summarize IBM Z job results,
+optionally include AI-assisted spool analysis, generate incident summaries,
+and support dry-run webhook notifications.
+
+This allows Jenkins, GitHub Actions, GitLab CI, Azure DevOps, and other
+automation tools to consume IBM Z job status in a structured and auditable way.
+
+Key endpoints:
+
+- `POST /api/devops/job-summary` — structured job summary with `safe_to_continue`
+- `POST /api/devops/incident-summary` — paste-ready incident first-pass summary
+- `POST /api/devops/notify` — webhook notification (dry-run by default)
+
+See:
+
+- docs/devops-integration.md
+- docs/pipeline-examples.md
+- docs/incident-routing.md
+- examples/jenkins, examples/github-actions, examples/api
+
+---
+
 ## Current Features
 
 - Browser-based IBM Z setup page

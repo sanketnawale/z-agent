@@ -1,0 +1,71 @@
+// z-agent Jenkins pipeline example (v0.5.0 DevOps Integration Preview)
+//
+// This Jenkinsfile demonstrates calling z-agent from a pipeline to get a
+// structured IBM Z job summary and failing the pipeline when a job is not
+// safe to continue.
+//
+// All URLs and tokens are FAKE. Use Jenkins credentials to store real values.
+// Do not hardcode real IBM Z credentials, real tokens, or private hostnames.
+
+pipeline {
+    agent any
+
+    environment {
+        // FAKE URL - replace with your z-agent host.
+        ZAGENT_URL = 'http://z-agent.example.org'
+        // Store the real token in Jenkins credentials, never in the file.
+        ZAGENT_TOKEN = credentials('zagent-token')
+        // FAKE IBM Z credentials passed as headers - use Jenkins credentials.
+        ZOWE_HOST     = credentials('zowe-host')
+        ZOWE_PORT     = '10443'
+        ZOWE_USER     = credentials('zowe-user')
+        ZOWE_PASSWORD = credentials('zowe-password')
+    }
+
+    parameters {
+        string(name: 'JOB_ID', defaultValue: 'JOB12345', description: 'IBM Z job ID to summarize')
+        string(name: 'JOB_NAME', defaultValue: 'PAYROLL01', description: 'IBM Z job name')
+    }
+
+    stages {
+        stage('Get z-agent job summary') {
+            steps {
+                script {
+                    def payload = """{
+                      "job_id": "${params.JOB_ID}",
+                      "job_name": "${params.JOB_NAME}",
+                      "include_ai_explanation": true
+                    }"""
+
+                    def response = sh(
+                        returnStdout: true,
+                        script: """curl -s -X POST "${ZAGENT_URL}/api/devops/job-summary" \
+                            -H "Content-Type: application/json" \
+                            -H "X-Zowe-Host: ${ZOWE_HOST}" \
+                            -H "X-Zowe-Port: ${ZOWE_PORT}" \
+                            -H "X-Zowe-User: ${ZOWE_USER}" \
+                            -H "X-Zowe-Password: ${ZOWE_PASSWORD}" \
+                            -d '${payload}'"""
+                    )
+
+                    def summary = readJSON text: response
+
+                    echo "Job ID:        ${summary.job_id}"
+                    echo "Job Name:      ${summary.job_name}"
+                    echo "Status:        ${summary.status}"
+                    echo "Return Code:   ${summary.return_code}"
+                    echo "Result:        ${summary.result}"
+                    echo "Safe to continue: ${summary.safe_to_continue}"
+                    echo "Likely cause:  ${summary.likely_cause}"
+                    echo "Evidence:      ${summary.evidence}"
+                    echo "Suggested next step: ${summary.suggested_next_step}"
+                    echo "Audit ID:      ${summary.audit_id}"
+
+                    if (summary.safe_to_continue == false) {
+                        error("IBM Z job ${params.JOB_ID} is not safe to continue (${summary.status} / ${summary.return_code}).")
+                    }
+                }
+            }
+        }
+    }
+}

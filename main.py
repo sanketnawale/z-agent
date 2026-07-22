@@ -6,6 +6,13 @@ from typing import List, Dict, Any
 from ai_gateway import explain_with_ai
 from agent.masking import mask_spool_text
 from agent.ollama_service import explain_spool_with_ollama
+from agent.devops import (
+    build_incident_summary,
+    build_job_summary,
+    load_ownership_rules,
+    match_owner,
+    notify as devops_notify,
+)
 
 import requests
 from fastapi import FastAPI, HTTPException, Request
@@ -38,6 +45,27 @@ class SubmitPayload(BaseModel):
 class ExplainSpoolPayload(BaseModel):
     job_id: str
     spool_text: str
+
+
+class DevopsJobSummaryPayload(BaseModel):
+    job_id: str
+    job_name: str = ""
+    include_ai_explanation: bool = True
+
+
+class DevopsIncidentPayload(BaseModel):
+    job_id: str
+    job_name: str = ""
+    spool_text: str = ""
+    include_ai_explanation: bool = True
+
+
+class DevopsNotifyPayload(BaseModel):
+    webhook_url: str
+    job_id: str = ""
+    job_name: str = ""
+    summary: str = ""
+    dry_run: bool = True
 
 
 def fallback_zowe_config() -> Dict[str, str]:
@@ -509,3 +537,148 @@ def agent_explain_spool(request: Request, payload: ExplainSpoolPayload):
     result["job_id"] = payload.job_id
     result["masked"] = True
     return result
+
+
+# ---------------------------------------------------------------------------
+# v0.5.0 DevOps Integration Preview
+# ---------------------------------------------------------------------------
+
+OWNERSHIP_RULES_PATH = os.getenv(
+    "OWNERSHIP_RULES_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                 "examples", "config", "ownership-rules.example.yaml"),
+)
+
+
+def _ownership_rules_for_request(request: Request):
+    path = request.headers.get("X-Ownership-Rules-Path") or OWNERSHIP_RULES_PATH
+    return load_ownership_rules(path)
+
+
+def _fetch_and_diagnose_job(config: Dict[str, str], job_id: str) -> Dict[str, Any]:
+    """Fetch spool from IBM Z via Zowe and run the rule-based diagnosis."""
+    spool_content = run_zowe(["zos-jobs", "view", "all-spool-content", job_id], config)
+    sections = parse_spool_sections(spool_content)
+    return diagnose_spool(job_id, sections, spool_content)
+
+
+@app.post("/api/devops/job-summary")
+def devops_job_summary(request: Request, payload: DevopsJobSummaryPayload):
+    """Pipeline-friendly structured job summary (v0.5.0 DevOps Integration Preview).
+
+    Fetches the job spool from IBM Z, runs rule-based diagnosis, optionally
+    includes AI-assisted spool explanation (masked through the v0.3 service),
+    and returns a structured JSON summary with ``safe_to_continue``.
+
+    Never exposes raw exceptions. On any IBM Z/AI failure, returns a basic
+    summary with ``ai_used: false`` and a safe message.
+    """
+    config = get_zowe_config(request)
+    ai_config = get_ai_config(request)
+
+    try:
+        diagnosis = _fetch_and_diagnose_job(config, payload.job_id)
+    except Exception:
+        diagnosis = {
+            "jobname": payload.job_name or "Unknown",
+            "final_rc": "Unknown",
+            "headline": "Unable to retrieve job spool",
+            "root_cause": "z-agent could not fetch job spool output.",
+            "fix": "Verify the job ID and IBM Z connection.",
+            "severity": "error",
+            "evidence": [],
+        }
+
+    ai_explanation = None
+    if payload.include_ai_explanation:
+        try:
+            masked_for_ai = ""
+            try:
+                spool_content = run_zowe(
+                    ["zos-jobs", "view", "all-spool-content", payload.job_id], config
+                )
+                masked_for_ai = mask_spool_text(spool_content)
+            except Exception:
+                pass
+            ai_explanation = explain_spool_with_ollama(
+                masked_for_ai, ai_config=ai_config, job_id=payload.job_id
+            )
+        except Exception:
+            ai_explanation = {"ai_used": False, "status": "error"}
+
+    summary = build_job_summary(
+        payload.job_id, payload.job_name, diagnosis, ai_explanation
+    )
+    return summary
+
+
+@app.post("/api/devops/incident-summary")
+def devops_incident_summary(request: Request, payload: DevopsIncidentPayload):
+    """Incident first-pass summary for paste into ServiceNow/Jira/Slack/Teams.
+
+    When ``spool_text`` is provided, it is masked and diagnosed locally
+    (no IBM Z fetch required). Otherwise the job spool is fetched via Zowe.
+    """
+    config = get_zowe_config(request)
+    ai_config = get_ai_config(request)
+
+    if payload.spool_text:
+        masked = mask_spool_text(payload.spool_text)
+        sections = parse_spool_sections(masked)
+        diagnosis = diagnose_spool(payload.job_id, sections, masked)
+    else:
+        try:
+            diagnosis = _fetch_and_diagnose_job(config, payload.job_id)
+        except Exception:
+            diagnosis = {
+                "jobname": payload.job_name or "Unknown",
+                "final_rc": "Unknown",
+                "headline": "Unable to retrieve job spool",
+                "root_cause": "z-agent could not fetch job spool output.",
+                "fix": "Verify the job ID and IBM Z connection.",
+                "severity": "error",
+                "evidence": [],
+            }
+
+    ai_explanation = None
+    if payload.include_ai_explanation:
+        try:
+            masked_for_ai = mask_spool_text(payload.spool_text) if payload.spool_text else ""
+            if not masked_for_ai:
+                try:
+                    spool_content = run_zowe(
+                        ["zos-jobs", "view", "all-spool-content", payload.job_id], config
+                    )
+                    masked_for_ai = mask_spool_text(spool_content)
+                except Exception:
+                    pass
+            if masked_for_ai:
+                ai_explanation = explain_spool_with_ollama(
+                    masked_for_ai, ai_config=ai_config, job_id=payload.job_id
+                )
+        except Exception:
+            ai_explanation = {"ai_used": False, "status": "error"}
+
+    rules = _ownership_rules_for_request(request)
+    owner = match_owner(payload.job_name or diagnosis.get("jobname", ""), rules)
+
+    return build_incident_summary(
+        payload.job_id, payload.job_name, diagnosis, ai_explanation, owner
+    )
+
+
+@app.post("/api/devops/notify")
+def devops_notify(request: Request, payload: DevopsNotifyPayload):
+    """Webhook notification with dry-run safety default.
+
+    ``dry_run`` defaults to ``True`` so pipelines never accidentally send real
+    network requests. In dry-run mode the response returns the payload that
+    would be POSTed to the webhook. Secrets are never included in the payload.
+    """
+    return devops_notify(
+        payload.webhook_url,
+        payload.job_id,
+        payload.job_name,
+        payload.summary,
+        dry_run=payload.dry_run,
+    )
