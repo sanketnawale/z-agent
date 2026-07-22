@@ -266,6 +266,31 @@ Use .env.example only for safe example configuration.
 
 ---
 
+## Sandbox Candidate Package
+
+z-agent includes a Sandbox candidate package with project positioning,
+architecture, Open Mainframe alignment, Zowe comparison, use cases,
+governance, known limitations, and demo materials for community feedback.
+
+See:
+
+- docs/sandbox-candidate-checklist.md
+- docs/project-pitch.md
+- docs/demo-script.md
+- docs/architecture.md
+- docs/known-limitations.md
+- docs/release-checklist.md
+- docs/security-review-checklist.md
+- docs/open-mainframe-alignment.md
+- docs/comparison-with-zowe.md
+- docs/landscape.md
+- docs/use-cases.md
+- docs/sandbox-proposal-draft.md
+- docs/good-first-issues.md
+- docs/faq.md
+
+---
+
 ## Documentation
 
 More documentation is available in the docs folder:
@@ -275,10 +300,26 @@ More documentation is available in the docs folder:
 - docs/ai-operations.md
 - docs/ai-safety.md
 - docs/demo-ai-spool-explanation.md
+- docs/demo-script.md
 - docs/security-model.md
+- docs/security-review-checklist.md
 - docs/setup.md
 - docs/demo.md
 - docs/zowe-integration.md
+- docs/open-mainframe-alignment.md
+- docs/comparison-with-zowe.md
+- docs/landscape.md
+- docs/use-cases.md
+- docs/devops-integration.md
+- docs/pipeline-examples.md
+- docs/incident-routing.md
+- docs/known-limitations.md
+- docs/release-checklist.md
+- docs/sandbox-candidate-checklist.md
+- docs/sandbox-proposal-draft.md
+- docs/project-pitch.md
+- docs/good-first-issues.md
+- docs/faq.md
 - docs/open-mainframe-sandbox-readiness.md
 
 ---

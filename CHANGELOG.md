@@ -1,5 +1,24 @@
 # Changelog
 
+## [v0.6.0-sandbox-candidate] - Unreleased
+
+### Added
+- Sandbox candidate checklist
+- Project pitch one-pager
+- Demo script
+- Architecture overview
+- Known limitations document
+- Release checklist
+- Security review checklist
+- Improved tester guidance
+- Good first issues guide
+- FAQ
+- README links to Sandbox candidate materials
+
+### Notes
+- This milestone prepares z-agent for Open Mainframe/Zowe community feedback.
+- It does not claim production readiness or formal Open Mainframe acceptance.
+
 ## [v0.5.0-devops-integration-preview] - Unreleased
 
 ### Added
