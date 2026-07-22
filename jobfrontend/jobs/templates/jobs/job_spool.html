@@ -276,6 +276,87 @@
                 button.disabled = false;
             }
         }
+
+        function escapeHtml(value) {
+            const div = document.createElement('div');
+            div.textContent = String(value == null ? '' : value);
+            return div.innerHTML;
+        }
+
+        function confidenceClass(confidence) {
+            const map = { high: 'success', medium: 'warning', low: 'error' };
+            return map[String(confidence).toLowerCase()] || 'warning';
+        }
+
+        function renderStructuredExplanation(result) {
+            const container = document.getElementById('ai-structured');
+            if (!container) return;
+
+            if (result.status === 'error' || result.ai_used === false) {
+                container.innerHTML =
+                    '<div class="result-box" style="border-color:rgba(255,107,118,.4);">' +
+                    '<strong style="color:var(--red);">AI explanation unavailable</strong>' +
+                    '<p class="meta-note">' + escapeHtml(result.message || 'AI explanation is currently unavailable.') +
+                    '</p><p class="meta-note">ai_used: ' + escapeHtml(result.ai_used) + '</p></div>';
+                return;
+            }
+
+            const rows = [
+                ['Job ID', escapeHtml(result.job_id)],
+                ['Status', escapeHtml(result.status)],
+                ['Likely cause', escapeHtml(result.likely_cause)],
+                ['Evidence', escapeHtml(result.evidence)],
+                ['Suggested next step', escapeHtml(result.suggested_next_step)],
+                ['Confidence', '<span class="' + confidenceClass(result.confidence) + '">' +
+                    escapeHtml(result.confidence) + '</span>'],
+                ['Model', escapeHtml(result.model)],
+                ['Masked', escapeHtml(result.masked)],
+                ['AI used', escapeHtml(result.ai_used)],
+                ['Audit ID', escapeHtml(result.audit_id)],
+            ];
+
+            container.innerHTML = '<div class="result-box"><div class="diag-list">' +
+                rows.map(function (r) {
+                    return '<div class="diag-item"><strong>' + r[0] + '</strong><p>' + r[1] + '</p></div>';
+                }).join('') + '</div></div>' +
+                '<div class="meta-note">AI explanations are advisory only and do not replace mainframe experts or production change controls.</div>';
+        }
+
+        async function explainWithAI() {
+            const button = document.getElementById('explain-ai-btn');
+            const container = document.getElementById('ai-structured');
+            const spoolEl = document.getElementById('raw-spool-text');
+            const jobIdEl = document.getElementById('spool-job-id');
+
+            activateTab('ai');
+            button.disabled = true;
+
+            const spoolText = (spoolEl && spoolEl.textContent || '').trim();
+            const jobId = (jobIdEl && jobIdEl.textContent || '').trim() || 'UNKNOWN';
+
+            if (!spoolText) {
+                if (container) container.innerHTML = '<div class="result-box"><pre>No spool output available to explain.</pre></div>';
+                button.disabled = false;
+                return;
+            }
+
+            if (container) container.innerHTML = '<div class="result-box"><pre>Analyzing masked spool output with AI...</pre></div>';
+
+            try {
+                const response = await fetch('/explain-spool/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ job_id: jobId, spool_text: spoolText })
+                });
+                const result = await response.json();
+                renderStructuredExplanation(result);
+            } catch (error) {
+                if (container) container.innerHTML =
+                    '<div class="result-box"><pre>Failed to reach z-agent explanation service.</pre></div>';
+            } finally {
+                button.disabled = false;
+            }
+        }
     </script>
 </head>
 <body>
@@ -291,6 +372,7 @@
             <a class="btn" href="/uss/">USS</a>
             <a class="btn" href="/logout/">Logout</a>
             <button id="ai-btn" class="btn primary" onclick="explainSpool()">Explain Spool</button>
+            <button id="explain-ai-btn" class="btn primary" onclick="explainWithAI()">Explain with AI</button>
         </div>
     </div>
 
@@ -366,6 +448,17 @@
             </div>
 
             <div class="tab-panel active" data-panel="ai">
+                <div class="meta-note">
+                    <strong>Explain with AI</strong> masks sensitive spool values, sends the masked
+                    output to a local Ollama model, and returns a structured explanation with an
+                    audit log entry. AI explanations are advisory only.
+                </div>
+                <div id="ai-structured">
+                    <div class="result-box">
+                        <pre id="ai-structured-placeholder">Click "Explain with AI" to run a masked, audited AI explanation of this spool output.</pre>
+                    </div>
+                </div>
+                <div style="height:12px"></div>
                 <div class="result-box">
                     <pre id="ai-output">Select Explain Spool to generate a concise, job-specific explanation from the extracted diagnosis and evidence.</pre>
                 </div>
@@ -395,6 +488,9 @@
             </div>
         </section>
     </div>
+
+    <pre id="raw-spool-text" style="display:none;">{{ raw_spool }}</pre>
+    <span id="spool-job-id" style="display:none;">{{ diagnosis.jobid }}</span>
 </div>
 </body>
 </html>

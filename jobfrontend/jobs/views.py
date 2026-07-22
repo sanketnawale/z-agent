@@ -601,6 +601,83 @@ def explain_member(request):
 
 @csrf_exempt
 @require_zowe_session
+def explain_spool_ai(request):
+    """v0.3.0 AI Operations Preview - structured spool explanation.
+
+    Proxies to the FastAPI /api/agent/explain-spool endpoint, writes an
+    AI_EXPLAIN_SPOOL audit log entry (metadata only - never raw spool), and
+    attaches an audit_id to the response shown in the UI/API.
+    """
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid request method"}, status=405)
+
+    try:
+        data = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON received"}, status=400)
+
+    job_id = str(data.get("job_id", "")).strip()
+    spool_text = str(data.get("spool_text", ""))
+
+    safety_mode = get_safety_mode(request)
+    if not is_action_allowed("AI_EXPLAIN_SPOOL", safety_mode):
+        write_audit_log(
+            request,
+            action="AI_EXPLAIN_SPOOL",
+            target=job_id or "unknown",
+            status="BLOCKED",
+            details=f"AI spool explanation blocked by safety mode: {safety_mode}",
+        )
+        return JsonResponse(
+            {
+                "status": "error",
+                "message": f"AI explanation is blocked in {safety_mode} mode.",
+                "ai_used": False,
+            },
+            status=403,
+        )
+
+    try:
+        result = backend_post(
+            request,
+            "/api/agent/explain-spool",
+            {"job_id": job_id, "spool_text": spool_text},
+            timeout=300,
+        )
+    except requests.exceptions.RequestException:
+        result = {
+            "status": "error",
+            "message": "AI explanation is currently unavailable.",
+            "ai_used": False,
+        }
+
+    ai_used = bool(result.get("ai_used"))
+    masked = bool(result.get("masked"))
+    model = result.get("model", "")
+    audit_status = "ALLOWED" if ai_used else "FAILED"
+    details = (
+        f"AI explain spool; ai_used={'yes' if ai_used else 'no'}; "
+        f"model={model or 'n/a'}; masked={'yes' if masked else 'no'}; "
+        "raw spool not stored"
+    )
+
+    audit_entry = write_audit_log(
+        request,
+        action="AI_EXPLAIN_SPOOL",
+        target=job_id or "unknown",
+        status=audit_status,
+        details=details,
+    )
+
+    audit_id = f"AUD-{audit_entry.id:06d}" if audit_entry else None
+    result["job_id"] = job_id
+    result["masked"] = True
+    result["audit_id"] = audit_id
+    return JsonResponse(result, status=200)
+
+
+@csrf_exempt
+@require_zowe_session
 def submit_jcl(request):
     if request.method != "POST":
         return JsonResponse({"error": "Invalid request method"}, status=405)

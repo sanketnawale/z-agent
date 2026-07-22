@@ -1,9 +1,19 @@
+"""
+Safety modes and action allow-lists for z-agent.
+
+Read/analyze actions (SAFE_READ_ACTIONS) are allowed in every safety mode,
+including READ_ONLY. AI_EXPLAIN_SPOOL is treated as a read-only action because
+it only runs AI analysis over already-available spool text and does not modify
+anything on IBM Z.
+"""
+
 SAFE_READ_ACTIONS = {
     "VIEW_JOBS",
     "VIEW_SPOOL",
     "VIEW_DATASET",
     "VIEW_USS",
     "AI_EXPLAIN",
+    "AI_EXPLAIN_SPOOL",
     "VIEW_AUDIT_LOGS",
     "VIEW_SAFETY_SETTINGS",
     "CHANGE_SAFETY_MODE",

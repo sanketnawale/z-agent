@@ -17,6 +17,7 @@ urlpatterns = [
     path("explorer/", views.explorer, name="explorer"),
     path("explorer/member/<path:dataset_name>/<str:member_name>/", views.member_detail, name="member_detail"),
     path("explainer/member/", views.explain_member, name="explain_member"),
+    path("explain-spool/", views.explain_spool_ai, name="explain_spool_ai"),
     path("submit-jcl/", views.submit_jcl, name="submit_jcl"),
     path("audit/", views.audit_logs, name="audit_logs"),
     path("safety/", views.safety_settings_view, name="safety_settings"),
