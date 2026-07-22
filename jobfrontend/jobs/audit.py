@@ -7,7 +7,7 @@ def write_audit_log(request, action, target="", status="ALLOWED", details=""):
     username = profile.get("user", "unknown")
     safety_mode = get_safety_mode(request)
 
-    AuditLog.objects.create(
+    return AuditLog.objects.create(
         username=username,
         action=action,
         target=mask_text(target),

@@ -4,6 +4,8 @@ import re
 import subprocess
 from typing import List, Dict, Any
 from ai_gateway import explain_with_ai
+from agent.masking import mask_spool_text
+from agent.ollama_service import explain_spool_with_ollama
 
 import requests
 from fastapi import FastAPI, HTTPException, Request
@@ -31,6 +33,11 @@ class TextPayload(BaseModel):
 
 class SubmitPayload(BaseModel):
     dataset_member: str
+
+
+class ExplainSpoolPayload(BaseModel):
+    job_id: str
+    spool_text: str
 
 
 def fallback_zowe_config() -> Dict[str, str]:
@@ -485,3 +492,20 @@ def submit_jcl(request: Request, payload: SubmitPayload):
         "submitted": payload.dataset_member,
         "result": output,
     }
+
+
+@app.post("/api/agent/explain-spool")
+def agent_explain_spool(request: Request, payload: ExplainSpoolPayload):
+    """Structured AI-assisted spool explanation (v0.3.0 AI Operations Preview).
+
+    Flow: raw spool -> masked -> safe prompt -> Ollama -> structured result.
+    The masking happens here, in the backend, so raw secrets never reach the
+    AI model. The audit log entry is written by the Django proxy layer that
+    calls this endpoint from the authenticated web session.
+    """
+    ai_config = get_ai_config(request)
+    masked = mask_spool_text(payload.spool_text)
+    result = explain_spool_with_ollama(masked, ai_config=ai_config, job_id=payload.job_id)
+    result["job_id"] = payload.job_id
+    result["masked"] = True
+    return result

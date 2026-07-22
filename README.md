@@ -125,6 +125,38 @@ Supported modes include:
 
 ---
 
+## AI Operations Preview
+
+z-agent can analyze IBM Z job spool output using a local Ollama model and
+return a structured explanation with likely cause, evidence, suggested next
+step, confidence, and audit ID.
+
+AI explanations are advisory only and are processed through the safety and
+audit layer.
+
+The workflow is:
+
+```
+IBM Z job spool output
+  -> sensitive data masking
+  -> Ollama AI explanation
+  -> structured result
+  -> audit log entry
+  -> UI/API result
+```
+
+Spool text is masked before it is sent to the model. Sensitive values
+(passwords, tokens, dataset names, IPs, emails, account-like identifiers) are
+replaced with placeholders, so raw secrets never reach the AI runtime.
+
+See:
+
+- docs/ai-operations.md
+- docs/ai-safety.md
+- docs/demo-ai-spool-explanation.md
+
+---
+
 ## Current Features
 
 - Browser-based IBM Z setup page
@@ -216,6 +248,9 @@ More documentation is available in the docs folder:
 
 - docs/architecture.md
 - docs/ai-gateway.md
+- docs/ai-operations.md
+- docs/ai-safety.md
+- docs/demo-ai-spool-explanation.md
 - docs/security-model.md
 - docs/setup.md
 - docs/demo.md
