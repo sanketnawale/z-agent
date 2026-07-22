@@ -1,0 +1,19 @@
+{
+  "_comment": "SYNTHETIC DEMO DATA. Do not commit real customer SMF/RMF data.",
+  "_comment2": "All values are fake and for preview/demo only.",
+  "system_name": "demo-lpar",
+  "period": "2026-07-demo",
+  "metrics": {
+    "cpu_time_used": 7200,
+    "total_cpu_capacity": 14400,
+    "online_cpu_time_used": 2500,
+    "total_transactions": 100000,
+    "batch_cpu_time_used": 4700,
+    "batch_jobs_completed": 1200,
+    "total_batch_window_minutes": 360,
+    "io_operations": 850000,
+    "workload_processed": 500000,
+    "cost": 1200
+  },
+  "include_ai_explanation": true
+}

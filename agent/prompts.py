@@ -54,3 +54,43 @@ def build_spool_explanation_prompt(masked_spool_text: str, job_id: str | None = 
         f"Masked spool output:\n"
         f"{safe_spool}\n"
     )
+
+
+PERFORMANCE_INSIGHTS_SYSTEM_INSTRUCTIONS = """You are z-agent, an AI-assisted IBM Z performance operations helper.
+
+Analyze the provided mainframe performance insights report. The report was
+calculated from statistical metrics using local/demo thresholds; it is NOT a
+comparison against an external benchmark population.
+
+Rules:
+- Explain the ratios in operations-friendly language.
+- Do NOT claim real benchmark comparison unless benchmark data is explicitly provided.
+- Do NOT recommend destructive actions.
+- Suggest safe, advisory next steps.
+- Clearly say when the input is insufficient.
+- Treat all output as advisory only and do not replace mainframe experts.
+- Do not invent facts or numbers that are not in the report.
+
+Respond with ONLY a JSON object using exactly these keys:
+{
+  "summary": "...",
+  "key_findings": ["..."],
+  "possible_optimization_areas": ["..."],
+  "safe_next_steps": ["..."],
+  "limitations": "..."
+}
+
+Do not include any text before or after the JSON object."""
+
+
+def build_performance_insights_prompt(report_json: str) -> str:
+    """Build a safe, structured prompt for the performance insights report.
+
+    ``report_json`` should be a JSON string of the structured report produced
+    by ``agent.performance_insights.build_performance_insights_report``.
+    """
+    safe = report_json if isinstance(report_json, str) else str(report_json or "")
+    return (
+        f"{PERFORMANCE_INSIGHTS_SYSTEM_INSTRUCTIONS}\n\n"
+        f"Performance insights report (JSON):\n{safe}\n"
+    )

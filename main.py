@@ -13,6 +13,8 @@ from agent.devops import (
     match_owner,
     notify as devops_notify,
 )
+from agent.performance_insights import build_performance_insights_report
+from agent.ollama_service import explain_performance_insights_with_ollama
 
 import requests
 from fastapi import FastAPI, HTTPException, Request
@@ -66,6 +68,13 @@ class DevopsNotifyPayload(BaseModel):
     job_name: str = ""
     summary: str = ""
     dry_run: bool = True
+
+
+class PerformanceInsightsPayload(BaseModel):
+    system_name: str = "unknown"
+    period: str = "unknown"
+    metrics: Dict[str, Any] = {}
+    include_ai_explanation: bool = True
 
 
 def fallback_zowe_config() -> Dict[str, str]:
@@ -682,3 +691,42 @@ def devops_notify(request: Request, payload: DevopsNotifyPayload):
         payload.summary,
         dry_run=payload.dry_run,
     )
+
+
+# ---------------------------------------------------------------------------
+# v0.7.0 Performance Insights Preview
+# ---------------------------------------------------------------------------
+
+@app.post("/api/performance/insights")
+def performance_insights(request: Request, payload: PerformanceInsightsPayload):
+    """Performance insights ratio analysis (v0.7.0 Performance Insights Preview).
+
+    Calculates mainframe efficiency ratios from provided statistical metrics,
+    assigns local/demo grades, and optionally includes an advisory AI
+    explanation. Never exposes raw exceptions. The audit log entry is written
+    by the Django proxy layer that calls this endpoint from an authenticated
+    session.
+
+    The v0.7 preview uses local/demo thresholds and does NOT claim external
+    benchmark comparison.
+    """
+    report = build_performance_insights_report(
+        payload.system_name, payload.period, payload.metrics
+    )
+
+    ai_explanation = {
+        "available": False,
+        "message": "AI explanation not requested.",
+    }
+    if payload.include_ai_explanation:
+        ai_config = get_ai_config(request)
+        try:
+            ai_explanation = explain_performance_insights_with_ollama(report, ai_config=ai_config)
+        except Exception:
+            ai_explanation = {
+                "available": False,
+                "message": "AI explanation unavailable. Ratio calculations returned without AI explanation.",
+            }
+
+    report["ai_explanation"] = ai_explanation
+    return report

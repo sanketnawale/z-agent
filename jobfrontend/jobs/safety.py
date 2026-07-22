@@ -17,6 +17,13 @@ DevOps audit action types (v0.5.0):
 DEVOPS_NOTIFY_DRY_RUN is a safe read action (always allowed).
 DEVOPS_NOTIFY_SENT is risky: it sends data to an external webhook and is only
 allowed in EXECUTE mode (or APPROVAL_REQUIRED with explicit approval).
+
+Performance Insights audit action (v0.7.0):
+
+    PERFORMANCE_INSIGHTS_ANALYSIS  analysis of provided statistical metrics
+
+This is a read/analyze action and is allowed in every safety mode including
+READ_ONLY. It does not modify anything on IBM Z and does not install programs.
 """
 
 SAFE_READ_ACTIONS = {
@@ -29,6 +36,7 @@ SAFE_READ_ACTIONS = {
     "DEVOPS_JOB_SUMMARY",
     "DEVOPS_INCIDENT_SUMMARY",
     "DEVOPS_NOTIFY_DRY_RUN",
+    "PERFORMANCE_INSIGHTS_ANALYSIS",
     "VIEW_AUDIT_LOGS",
     "VIEW_SAFETY_SETTINGS",
     "CHANGE_SAFETY_MODE",

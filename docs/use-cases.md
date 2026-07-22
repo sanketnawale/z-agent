@@ -107,5 +107,25 @@ mainframe experts or production change controls.
 - Direct FastAPI endpoint calls skip Django session audit logging; the audited
   path is the Django UI/API proxy.
 
+## Future use case (preview)
+
+### 8. Performance insights from statistical metrics
+
+- **Problem**: Operations teams want a quick, advisory read on mainframe
+  efficiency ratios (CPU utilization, throughput, batch efficiency, cost) from
+  statistical metrics, without standing up a full analytics platform.
+- **Current workflow**: Pull statistics manually or via specialized tooling and
+  interpret them without a standard scale.
+- **z-agent workflow (preview)**: Provide statistical metrics to
+  `POST /api/performance/insights` (or the Performance Insights UI). z-agent
+  calculates ratios, assigns local/demo grades on a standard-deviation ratio
+  scale concept, and optionally explains the report with an advisory AI summary.
+- **Value**: A consistent, advisory first-pass read using transparent, documented
+  thresholds. Performance Insights currently uses provided statistical metrics
+  and local/demo thresholds. Real benchmark comparison and SMF/RMF integration
+  are future work.
+
+See `docs/performance-insights.md` for details.
+
 See `docs/ai-safety.md` for the safety model and `docs/demo-ai-spool-explanation.md`
 for a hands-on demo flow.

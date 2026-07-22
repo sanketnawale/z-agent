@@ -24,4 +24,6 @@ urlpatterns = [
     path("api/devops/job-summary", views.devops_job_summary, name="devops_job_summary"),
     path("api/devops/incident-summary", views.devops_incident_summary, name="devops_incident_summary"),
     path("api/devops/notify", views.devops_notify, name="devops_notify"),
+    path("api/performance/insights", views.performance_insights_api, name="performance_insights_api"),
+    path("performance/", views.performance_insights_view, name="performance_insights"),
 ]

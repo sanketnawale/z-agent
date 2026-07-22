@@ -1,5 +1,27 @@
 # Changelog
 
+## [v0.7.0-performance-insights-preview] - Unreleased
+
+### Added
+- Performance Insights preview module
+- Ratio calculation engine
+- Standard deviation ratio scale mapping
+- Performance insights API endpoint
+- Optional AI explanation for performance ratio reports
+- Performance Insights UI page
+- Performance analysis audit action
+- Synthetic performance metrics example
+- Performance Insights curl example
+- Performance Insights documentation
+- Performance ratio documentation
+- Performance data-handling documentation
+
+### Safety
+- Uses synthetic/sample metrics only in examples
+- Does not store raw metric files in audit logs
+- Does not claim external benchmark comparison without authorized benchmark data
+- Performance analysis is advisory only
+
 ## [v0.6.0-sandbox-candidate] - Unreleased
 
 ### Added
