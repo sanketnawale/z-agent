@@ -370,9 +370,9 @@
             <a class="btn" href="/jobs/">Back to Jobs</a>
             <a class="btn" href="/explorer/">Explorer</a>
             <a class="btn" href="/uss/">USS</a>
+            <a class="btn" href="/safety/">Safety</a>
             <a class="btn" href="/logout/">Logout</a>
-            <button id="ai-btn" class="btn primary" onclick="explainSpool()">Explain Spool</button>
-            <button id="explain-ai-btn" class="btn primary" onclick="explainWithAI()">Explain with AI</button>
+            <button id="ai-btn" class="btn primary" onclick="explainSpool()">Explain with AI</button>
         </div>
     </div>
 
@@ -455,15 +455,15 @@
                 </div>
                 <div id="ai-structured">
                     <div class="result-box">
-                        <pre id="ai-structured-placeholder">Click "Explain with AI" to run a masked, audited AI explanation of this spool output.</pre>
+                        <pre id="ai-structured-placeholder">Click "Explain with AI" to generate a job-specific AI explanation from the extracted diagnosis and evidence.</pre>
                     </div>
                 </div>
                 <div style="height:12px"></div>
                 <div class="result-box">
-                    <pre id="ai-output">Select Explain Spool to generate a concise, job-specific explanation from the extracted diagnosis and evidence.</pre>
+                    <pre id="ai-output">Click Explain with AI to generate a job-specific AI explanation from the extracted diagnosis and evidence.</pre>
                 </div>
                 <pre id="ai-prompt" style="display:none;">{{ diagnosis.ai_prompt }}</pre>
-                <div class="meta-note">The AI prompt now uses extracted diagnosis data instead of dumping the entire spool, which makes the explanation faster, cleaner, and job-specific.</div>
+                <div class="meta-note">The AI prompt uses extracted diagnosis data instead of dumping the entire spool, which makes the explanation faster, cleaner, and job-specific.</div>
             </div>
 
             <div class="tab-panel" data-panel="logs">

@@ -14,6 +14,15 @@ from django.views.decorators.csrf import csrf_exempt
 
 FASTAPI_URL = os.getenv("FASTAPI_URL", "http://127.0.0.1:3001")
 
+# Default AI provider / Ollama URL for fresh sessions.
+# Docker server mode uses the z-agent-ollama container on the Docker network:
+#   http://ollama:11434/api/generate
+# For local non-Docker development, change this to:
+#   http://127.0.0.1:11434/api/generate
+DEFAULT_AI_PROVIDER = "custom_ollama"
+DEFAULT_AI_MODEL = "llama3.2:3b"
+DEFAULT_OLLAMA_URL = "http://ollama:11434/api/generate"
+
 
 def get_zowe_profile(request):
     return request.session.get("zowe_profile")
@@ -42,10 +51,10 @@ def zowe_headers_from_profile(profile):
 
 def get_ai_profile(request):
     return request.session.get("ai_profile", {
-        "provider": "server_ollama",
-        "model": "llama3.2:3b",
+        "provider": DEFAULT_AI_PROVIDER,
+        "model": DEFAULT_AI_MODEL,
         "api_key": "",
-        "ollama_url": "http://127.0.0.1:11434/api/generate",
+        "ollama_url": DEFAULT_OLLAMA_URL,
     })
 
 
@@ -54,10 +63,10 @@ def ai_headers_from_profile(profile):
         return {}
 
     return {
-        "X-AI-Provider": profile.get("provider", "server_ollama"),
-        "X-AI-Model": profile.get("model", "llama3.2:3b"),
+        "X-AI-Provider": profile.get("provider", DEFAULT_AI_PROVIDER),
+        "X-AI-Model": profile.get("model", DEFAULT_AI_MODEL),
         "X-AI-API-Key": profile.get("api_key", ""),
-        "X-Ollama-URL": profile.get("ollama_url", "http://127.0.0.1:11434/api/generate"),
+        "X-Ollama-URL": profile.get("ollama_url", DEFAULT_OLLAMA_URL),
     }
 
 
@@ -175,9 +184,9 @@ def setup_view(request):
         "port": os.getenv("ZOWE_PORT", "10443"),
         "user": os.getenv("ZOWE_USER", ""),
         "allow_self_signed": True,
-        "ai_provider": "server_ollama",
-        "ai_model": "llama3.2:3b",
-        "ollama_url": "http://127.0.0.1:11434/api/generate",
+        "ai_provider": DEFAULT_AI_PROVIDER,
+        "ai_model": DEFAULT_AI_MODEL,
+        "ollama_url": DEFAULT_OLLAMA_URL,
     }
 
     if request.method == "GET":
@@ -191,7 +200,7 @@ def setup_view(request):
     user = request.POST.get("user", "").strip().upper()
     password = request.POST.get("password", "")
     allow_self_signed = request.POST.get("allow_self_signed") == "on"
-    ai_provider = request.POST.get("ai_provider", "server_ollama").strip()
+    ai_provider = request.POST.get("ai_provider", DEFAULT_AI_PROVIDER).strip()
     ai_model = request.POST.get("ai_model", "").strip()
     ai_api_key = request.POST.get("ai_api_key", "").strip()
     ollama_url = request.POST.get("ollama_url", "").strip()
@@ -262,7 +271,7 @@ def setup_view(request):
             "provider": ai_provider,
             "model": ai_model or default_model,
             "api_key": ai_api_key,
-            "ollama_url": ollama_url or "http://127.0.0.1:11434/api/generate",
+            "ollama_url": ollama_url or DEFAULT_OLLAMA_URL,
         }
 
         request.session["safety_mode"] = "READ_ONLY"
@@ -326,7 +335,7 @@ def ai_settings_view(request):
             "zowe_user": get_zowe_profile(request).get("user"),
         })
 
-    provider = request.POST.get("ai_provider", "server_ollama").strip()
+    provider = request.POST.get("ai_provider", DEFAULT_AI_PROVIDER).strip()
     model = request.POST.get("ai_model", "").strip()
     api_key = request.POST.get("ai_api_key", "").strip()
     ollama_url = request.POST.get("ollama_url", "").strip()
@@ -353,7 +362,7 @@ def ai_settings_view(request):
         "provider": provider,
         "model": model or default_model,
         "api_key": final_api_key,
-        "ollama_url": ollama_url or "http://127.0.0.1:11434/api/generate",
+        "ollama_url": ollama_url or DEFAULT_OLLAMA_URL,
     }
 
     return render(request, "jobs/ai_settings.html", {

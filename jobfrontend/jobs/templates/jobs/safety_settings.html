@@ -60,7 +60,11 @@
     <p>
         User: {{ zowe_user }} |
         Current Safety Mode: <span class="mode">{{ safety_mode }}</span> |
-        <a href="{% url 'job_list' %}">Back to Jobs</a> |
+        <a href="{% url 'job_list' %}">Jobs</a> |
+        <a href="{% url 'explorer' %}">Explorer</a> |
+        <a href="{% url 'uss_browser' %}">USS</a> |
+        <a href="{% url 'ai_settings' %}">AI Settings</a> |
+        <a href="{% url 'performance_insights' %}">Performance</a> |
         <a href="{% url 'audit_logs' %}">Audit Logs</a>
     </p>
 

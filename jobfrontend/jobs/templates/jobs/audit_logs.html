@@ -57,7 +57,9 @@
     <div class="top">
         User: {{ zowe_user }} |
         Safety Mode: {{ safety_mode }} |
-        <a href="{% url 'job_list' %}">Back to Jobs</a>
+        <a href="{% url 'job_list' %}">Jobs</a> |
+        <a href="{% url 'safety_settings' %}">Safety</a> |
+        <a href="{% url 'ai_settings' %}">AI Settings</a>
     </div>
 
     <table>
