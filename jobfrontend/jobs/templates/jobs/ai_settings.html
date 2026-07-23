@@ -162,6 +162,7 @@
             <a class="btn" href="/jobs/">Jobs</a>
             <a class="btn" href="/explorer/">Explorer</a>
             <a class="btn" href="/uss/">USS</a>
+            <a class="btn" href="/safety/">Safety</a>
             <a class="btn" href="/logout/">Logout</a>
         </div>
     </div>
@@ -187,13 +188,11 @@
                 <option value="custom_ollama" {% if form.provider == "custom_ollama" %}selected{% endif %}>Custom / Local Ollama URL</option>
                 <option value="claude" {% if form.provider == "claude" %}selected{% endif %}>Claude API</option>
                 <option value="openai" {% if form.provider == "openai" %}selected{% endif %}>OpenAI API</option>
-                <option value="gemini" {% if form.ai_provider == "gemini" %}selected{% endif %}>
-                Gemini API
-            </option>
+                <option value="gemini" {% if form.provider == "gemini" %}selected{% endif %}>Gemini API</option>
             </select>
 
             <label>Model</label>
-            <input name="ai_model" value="{{ form.model }}"placeholder="llama3.2:3b / claude-3-5-haiku-latest / gpt-4.1-mini / gemini-2.5-flash">
+            <input name="ai_model" value="{{ form.model }}" placeholder="llama3.2:3b / claude-3-5-haiku-latest / gpt-4.1-mini / gemini-2.5-flash">
             <div class="hint">
                 Examples:
                 <code>llama3.2:3b</code>,
@@ -203,10 +202,10 @@
             </div>
 
             <label>Ollama URL</label>
-            <input name="ollama_url" value="{{ form.ollama_url }}" placeholder="http://127.0.0.1:11434/api/generate">
+            <input name="ollama_url" value="{{ form.ollama_url }}" placeholder="http://ollama:11434/api/generate">
             <div class="hint">
-                For local development use <code>http://127.0.0.1:11434/api/generate</code>.
-                Later in Docker server mode we can use <code>http://ollama:11434/api/generate</code>.
+                For Docker server mode use <code>http://ollama:11434/api/generate</code>.
+                For local non-Docker development use <code>http://127.0.0.1:11434/api/generate</code>.
             </div>
 
             <label>Cloud AI API Key</label>
