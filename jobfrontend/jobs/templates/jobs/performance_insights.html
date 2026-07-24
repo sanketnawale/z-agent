@@ -182,7 +182,29 @@ async function analyzePerformance() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
+
+        // Guard against HTML responses (500 debug page / redirect) before parsing.
+        const contentType = resp.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+            const text = await resp.text();
+            meta.textContent = 'z-agent returned a non-JSON response' +
+                (resp.status ? ' (HTTP ' + resp.status + ').' : '.') +
+                ' Check the z-agent backend and try again.';
+            tbody.innerHTML = '';
+            aiSection.innerHTML = '';
+            disclaimer.textContent = '';
+            return;
+        }
+
         const result = await resp.json();
+
+        if (result.status === 'error' || result.error) {
+            meta.textContent = result.message || result.error || 'Performance analysis failed.';
+            tbody.innerHTML = '';
+            aiSection.innerHTML = '';
+            disclaimer.textContent = '';
+            return;
+        }
 
         meta.innerHTML = '<strong>System:</strong> ' + escapeHtml(result.system_name) +
             ' &nbsp; <strong>Period:</strong> ' + escapeHtml(result.period) +
