@@ -172,6 +172,27 @@ class AIExplanationParsingTests(unittest.TestCase):
         self.assertFalse(_PERFORMANCE_SAFE_ERROR["available"])
         self.assertIn("Ratio calculations returned", _PERFORMANCE_SAFE_ERROR["message"])
 
+    def test_ai_timeout_error_shape(self):
+        from agent.ollama_service import _PERFORMANCE_AI_TIMEOUT_ERROR
+        self.assertFalse(_PERFORMANCE_AI_TIMEOUT_ERROR["available"])
+        self.assertIn("timed out", _PERFORMANCE_AI_TIMEOUT_ERROR["message"])
+        self.assertIn("Ratio calculations returned", _PERFORMANCE_AI_TIMEOUT_ERROR["message"])
+
+    def test_ai_timeout_returns_ratios_without_ai(self):
+        import requests
+        import unittest.mock as mock
+        from agent.ollama_service import explain_performance_insights_with_ollama
+
+        with mock.patch("agent.ollama_service.requests.post",
+                        side_effect=requests.exceptions.ReadTimeout("slow ollama")):
+            result = explain_performance_insights_with_ollama(
+                {"overall_grade": "C", "ratios": []},
+                ai_config={"ollama_url": "http://127.0.0.1:11434"},
+            )
+        self.assertFalse(result["available"])
+        self.assertIn("timed out", result["message"])
+        self.assertNotIn("traceback", result)
+
     def test_ai_parses_structured_json(self):
         import unittest.mock as mock
         from agent.ollama_service import explain_performance_insights_with_ollama

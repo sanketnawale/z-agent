@@ -541,3 +541,73 @@ class PerformanceInsightsEndpointTests(TestCase):
         self.assertFalse(body["ai_explanation"]["available"])
         self.assertTrue(len(body["ratios"]) >= 1)
         self.assertEqual(body["benchmark_mode"], "local-scale-only")
+
+    def test_ai_unavailable_still_returns_ratios(self):
+        import unittest.mock as mock
+        with mock.patch("jobs.views.devops_backend_post",
+                        return_value=dict(_PERF_AI_UNAVAILABLE)):
+            response = _perf_post({
+                "system_name": "demo-lpar", "period": "2026-07-demo",
+                "metrics": {"cpu_time_used": 7200, "total_cpu_capacity": 14400},
+                "include_ai_explanation": True,
+            })
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertTrue(len(body["ratios"]) >= 0)
+        self.assertFalse(body["ai_explanation"]["available"])
+        self.assertEqual(response["Content-Type"], "application/json")
+
+
+class PerformanceInsightsPageTests(TestCase):
+    def _perf_page_client(self, safety_mode="EXECUTE"):
+        from django.test import Client
+        from importlib import import_module
+        from django.conf import settings
+
+        client = Client()
+        engine = import_module(settings.SESSION_ENGINE)
+        session = engine.SessionStore()
+        session["safety_mode"] = safety_mode
+        session["zowe_profile"] = {"user": "Z00805", "host": "204.90.115.200",
+                                    "port": "10443"}
+        session.save()
+        client.cookies[settings.SESSION_COOKIE_NAME] = session.session_key
+        return client
+
+    def test_ai_checkbox_unchecked_by_default(self):
+        client = self._perf_page_client()
+        response = client.get("/performance/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/html; charset=utf-8")
+        body = response.content.decode()
+        self.assertIn("Include AI explanation", body)
+        self.assertIn('id="include-ai"', body)
+        self.assertNotIn('id="include-ai" checked', body)
+        self.assertNotIn('id="include-ai" checked="checked"', body)
+        self.assertIn('"include_ai_explanation": false', body)
+
+    def test_ai_timeout_via_backend_returns_ratios(self):
+        import unittest.mock as mock
+        timed_out = {
+            "system_name": "demo-lpar", "period": "2026-07-demo",
+            "overall_grade": "C", "overall_score": 1,
+            "ratios": [{"name": "CPU Utilization Ratio", "value": 0.5,
+                        "grade": "AVG", "score": 0,
+                        "interpretation": "CPU utilization is within the average range."}],
+            "benchmark_mode": "local-scale-only",
+            "ai_explanation": {"available": False,
+                               "message": "AI explanation timed out. Ratio calculations returned without AI explanation."},
+            "disclaimer": "The v0.7.0 Performance Insights Preview ...",
+        }
+        with mock.patch("jobs.views.devops_backend_post", return_value=timed_out):
+            response = _perf_post({
+                "system_name": "demo-lpar", "period": "2026-07-demo",
+                "metrics": {"cpu_time_used": 7200, "total_cpu_capacity": 14400},
+                "include_ai_explanation": True,
+            })
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertFalse(body["ai_explanation"]["available"])
+        self.assertIn("timed out", body["ai_explanation"]["message"])
+        self.assertTrue(len(body["ratios"]) >= 1)
+        self.assertEqual(response["Content-Type"], "application/json")
