@@ -476,7 +476,7 @@ class PerformanceInsightsEndpointTests(TestCase):
             self.assertNotIn("987654321", row.details or "")
             self.assertNotIn("42", row.details or "")
 
-    def test_invalid_metrics_return_safe_error(self):
+    def test_invalid_metrics_return_safe_json_error(self):
         from django.test import Client
         from importlib import import_module
         from django.conf import settings
@@ -489,4 +489,55 @@ class PerformanceInsightsEndpointTests(TestCase):
         response = client.post("/api/performance/insights", data="not json",
                                content_type="application/json")
         self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json()["status"], "error")
+        body = response.json()
+        self.assertEqual(body["status"], "error")
+        # Acceptance criterion: invalid JSON returns JSON with an error key
+        self.assertEqual(body["error"], "Invalid JSON")
+        self.assertEqual(response["Content-Type"], "application/json")
+
+    def test_backend_failure_returns_json_not_html(self):
+        import requests
+        import unittest.mock as mock
+        with mock.patch("jobs.views.devops_backend_post",
+                        side_effect=requests.exceptions.ConnectionError("no backend")):
+            response = _perf_post({
+                "system_name": "demo-lpar", "period": "p",
+                "metrics": {"cpu_time_used": 7200, "total_cpu_capacity": 14400},
+                "include_ai_explanation": False,
+            })
+        self.assertEqual(response.status_code, 502)
+        body = response.json()
+        self.assertEqual(body["status"], "error")
+        self.assertIn("Failed to analyze performance metrics", body["error"])
+        self.assertEqual(response["Content-Type"], "application/json")
+
+    def test_unexpected_exception_returns_json_500(self):
+        import unittest.mock as mock
+        with mock.patch("jobs.views.devops_backend_post",
+                        side_effect=RuntimeError("boom")):
+            response = _perf_post({
+                "system_name": "demo-lpar", "period": "p",
+                "metrics": {}, "include_ai_explanation": False,
+            })
+        self.assertEqual(response.status_code, 500)
+        body = response.json()
+        self.assertEqual(body["status"], "error")
+        self.assertEqual(response["Content-Type"], "application/json")
+
+    def test_non_ai_analysis_returns_ratios(self):
+        import unittest.mock as mock
+        ok = dict(_PERF_OK)
+        ok["ai_explanation"] = {"available": False,
+                                "message": "AI explanation unavailable. Ratio calculations returned without AI explanation."}
+        with mock.patch("jobs.views.devops_backend_post", return_value=dict(ok)):
+            response = _perf_post({
+                "system_name": "demo-lpar", "period": "2026-07-demo",
+                "metrics": {"cpu_time_used": 7200, "total_cpu_capacity": 14400,
+                            "workload_processed": 500000, "cost": 1200},
+                "include_ai_explanation": False,
+            })
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertFalse(body["ai_explanation"]["available"])
+        self.assertTrue(len(body["ratios"]) >= 1)
+        self.assertEqual(body["benchmark_mode"], "local-scale-only")
