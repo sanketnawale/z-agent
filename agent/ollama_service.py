@@ -38,6 +38,12 @@ _VALID_CONFIDENCE = {"low", "medium", "high"}
 _CONNECT_TIMEOUT = 10
 _READ_TIMEOUT = 120
 
+# Performance Insights AI explanation is optional and must never freeze the
+# app. Use a short, dedicated timeout (~30-45s) instead of the long spool
+# timeout. Spool AI explanation keeps its own (longer) timeout above.
+_PERF_AI_CONNECT_TIMEOUT = 8
+_PERF_AI_READ_TIMEOUT = 35
+
 _SAFE_ERROR = {
     "status": "error",
     "message": "AI explanation is currently unavailable.",
@@ -217,6 +223,11 @@ _PERFORMANCE_SAFE_ERROR = {
     "message": "AI explanation unavailable. Ratio calculations returned without AI explanation.",
 }
 
+_PERFORMANCE_AI_TIMEOUT_ERROR = {
+    "available": False,
+    "message": "AI explanation timed out. Ratio calculations returned without AI explanation.",
+}
+
 
 def explain_performance_insights_with_ollama(
     report: Dict[str, Any],
@@ -224,6 +235,10 @@ def explain_performance_insights_with_ollama(
 ) -> Dict[str, Any]:
     """Call Ollama with a performance insights report and return a structured
     advisory explanation. Never raises; returns a safe error dict on failure.
+
+    Uses a short, dedicated timeout so a slow/unavailable Ollama never freezes
+    the Performance Insights page. Ratio calculations are always returned by
+    the caller regardless of this function's outcome.
     """
     try:
         model = _ai_config_value(ai_config, "model") or _resolve_model("")
@@ -240,13 +255,15 @@ def explain_performance_insights_with_ollama(
                 "keep_alive": "15m",
                 "options": {"temperature": 0.2},
             },
-            timeout=(_CONNECT_TIMEOUT, _READ_TIMEOUT),
+            timeout=(_PERF_AI_CONNECT_TIMEOUT, _PERF_AI_READ_TIMEOUT),
         )
         response.raise_for_status()
         data = response.json()
         raw_text = (data.get("response") or "").strip()
         if not raw_text:
             return dict(_PERFORMANCE_SAFE_ERROR)
+    except requests.exceptions.Timeout:
+        return dict(_PERFORMANCE_AI_TIMEOUT_ERROR)
     except requests.exceptions.RequestException:
         return dict(_PERFORMANCE_SAFE_ERROR)
     except Exception:

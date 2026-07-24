@@ -116,12 +116,12 @@
     "workload_processed": 500000,
     "cost": 1200
   },
-  "include_ai_explanation": true
+  "include_ai_explanation": false
 }</textarea>
 
         <div class="row">
             <label style="display: inline-flex; align-items: center; gap: 6px; margin: 0;">
-                <input type="checkbox" id="include-ai" checked style="width: auto; min-height: 0; padding: 0;">
+                <input type="checkbox" id="include-ai" style="width: auto; min-height: 0; padding: 0;">
                 Include AI explanation
             </label>
             <button class="btn primary" id="analyze-btn" onclick="analyzePerformance()">Analyze Performance</button>
@@ -232,7 +232,11 @@ async function analyzePerformance() {
             html += '<p class="note"><strong>Limitations:</strong> ' + escapeHtml(ai.limitations) + '</p>';
             aiSection.innerHTML = html;
         } else {
-            aiSection.innerHTML = '<p class="note"><em>' + escapeHtml(ai.message || 'AI explanation unavailable.') + '</em></p>';
+            var aiNote = '<em>Ratios calculated successfully. AI explanation is unavailable or timed out.</em>';
+            if (ai.message) {
+                aiNote += '<br><em>' + escapeHtml(ai.message) + '</em>';
+            }
+            aiSection.innerHTML = '<p class="note">' + aiNote + '</p>';
         }
 
         disclaimer.textContent = result.disclaimer || '';

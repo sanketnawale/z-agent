@@ -12,4 +12,5 @@ python manage.py migrate --noinput || true
 gunicorn jobfrontend.wsgi:application \
   --bind 0.0.0.0:8001 \
   --workers "${WEB_WORKERS:-2}" \
-  --timeout 240
+  --threads "${WEB_THREADS:-4}" \
+  --timeout 360
