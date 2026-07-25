@@ -25,6 +25,7 @@ COPY main.py /app/main.py
 COPY ai_gateway.py /app/ai_gateway.py
 COPY start.sh /app/start.sh
 COPY jobfrontend /app/jobfrontend
+COPY agent /app/agent
 
 RUN chmod +x /app/start.sh
 

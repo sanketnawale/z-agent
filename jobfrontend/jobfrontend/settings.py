@@ -25,9 +25,17 @@ SECRET_KEY = 'django-insecure-^s33=50u9%&%(p*vsoy6!s#gv3!0mifg!!o6258pfmxt%710h5
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = [
+    "zagent.cloudnova.tech",
+    "127.0.0.1",
+    "localhost",
+]
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://zagent.cloudnova.tech",
+]
 
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # Application definition
 
 INSTALLED_APPS = [
