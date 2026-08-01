@@ -10,30 +10,48 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
+def _env_list(name, default):
+    """Read a comma-separated env var into a list of stripped values."""
+    raw = os.getenv(name, default)
+    if raw is None:
+        return []
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+def _env_bool(name, default=False):
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-^s33=50u9%&%(p*vsoy6!s#gv3!0mifg!!o6258pfmxt%710h5'
+# Set DJANGO_SECRET_KEY in the environment for any non-local deployment.
+# The default here is intentionally a dev-only placeholder.
+SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-only-change-me")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = _env_bool("DJANGO_DEBUG", default=True)
 
-ALLOWED_HOSTS = [
-    "zagent.cloudnova.tech",
-    "127.0.0.1",
-    "localhost",
-]
+ALLOWED_HOSTS = _env_list(
+    "DJANGO_ALLOWED_HOSTS",
+    "localhost,127.0.0.1,zagent.cloudnova.tech",
+)
 
-CSRF_TRUSTED_ORIGINS = [
+CSRF_TRUSTED_ORIGINS = _env_list(
+    "DJANGO_CSRF_TRUSTED_ORIGINS",
     "https://zagent.cloudnova.tech",
-]
+)
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # Application definition

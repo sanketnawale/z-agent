@@ -173,6 +173,21 @@ def home(request):
     return redirect("setup")
 
 
+@csrf_exempt
+def health(request):
+    """Unauthenticated health endpoint for load balancers and orchestrators.
+
+    Returns 200 JSON when the Django frontend process is alive. This does not
+    probe the FastAPI backend or IBM Z so it stays safe to call frequently from
+    a Docker healthcheck or reverse proxy without recording audit entries.
+    """
+    return JsonResponse({
+        "status": "ok",
+        "service": "z-agent-frontend",
+        "version": "v1.2.0-preview",
+    })
+
+
 def setup_view(request):
     """
     First screen of product mode.
