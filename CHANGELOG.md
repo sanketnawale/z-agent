@@ -1,5 +1,38 @@
 # Changelog
 
+## [v1.2.0-production-readiness-preview] - Unreleased
+
+### Added
+- Production readiness plan (`docs/v1.2-production-readiness-plan.md`)
+- Versioned health endpoints
+  - FastAPI `GET /api/health` (with `service` and `version`) — `/health` kept for backward compatibility
+  - Django `GET /api/health`
+- Environment-based Django settings
+  - `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, `DJANGO_SECRET_KEY`
+  - `SECURE_PROXY_SSL_HEADER` for reverse-proxy HTTPS
+- Docker Compose production readiness
+  - `healthcheck` against `/api/health` for the web container
+  - Production environment block (DEBUG=false, real allowed hosts, env SECRET_KEY)
+- Expanded `.env.example` with safe defaults for the new env vars and AI provider/model
+- Production deployment documentation (`docs/production-deployment.md`)
+  including Nginx + Let's Encrypt example and health endpoint reference
+- Demo mode foundation
+  - `examples/demo-spool-output.txt` (synthetic, pre-masked IBM Z spool)
+  - `examples/demo-job-summary.json` (synthetic DevOps job summary)
+  - `docs/demo-mode.md`
+- README screenshots for Performance Insights and Safety Settings
+
+### Security
+- No credentials, spool output, or dataset names committed
+- Demo spool content is masked and synthetic — no real hostnames/accounts
+- `DJANGO_SECRET_KEY` now sourced from env with a dev-only placeholder default
+- `DJANGO_DEBUG` defaults to `true` only for local dev; Docker Compose sets it to `false`
+
+### Notes
+- This release prepares Z-Agent for the Forge26 and Open Mainframe review.
+- It does not add risky features: no automatic job submit/kill, no DB-stored
+  credentials, no AI-decided actions, and no public demo against real IBM Z.
+
 ## [v0.7.0-performance-insights-preview] - Unreleased
 
 ### Added

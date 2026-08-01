@@ -1,0 +1,15 @@
+{
+  "job_id": "JOB12345",
+  "job_name": "JOBDEMO1",
+  "status": "SUCCESS",
+  "return_code": "RC=0000",
+  "result": "success",
+  "likely_cause": "Job completed successfully with return code 0000. All steps finished without ABEND or non-zero condition codes.",
+  "evidence": "$HASP395 JOBDEMO1 ENDED - RC=0000; IEFBR14 GENERATED NO MESSAGES",
+  "suggested_next_step": "No action needed. The job reached normal completion.",
+  "confidence": "high",
+  "ai_used": false,
+  "safe_to_continue": true,
+  "audit_id": "AUD-000001",
+  "_demo_note": "Synthetic sample output for the v1.2.0 Production Readiness Preview. Mirrors the shape of POST /api/devops/job-summary but uses no real IBM Z data."
+}

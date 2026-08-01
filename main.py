@@ -317,6 +317,21 @@ Evidence:
 def health():
     return {"status": "ok"}
 
+
+@app.get("/api/health")
+def api_health():
+    """Versioned health endpoint for production readiness (v1.2.0-preview).
+
+    ``GET /health`` is kept for backward compatibility. ``GET /api/health``
+    is the recommended endpoint for load balancers and orchestrators because
+    it reports the service name and version.
+    """
+    return {
+        "status": "ok",
+        "service": "z-agent-api",
+        "version": "v1.2.0-preview",
+    }
+
 @app.get("/connection/test")
 def test_connection(request: Request):
     config = get_zowe_config(request)

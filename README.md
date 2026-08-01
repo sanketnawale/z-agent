@@ -343,6 +343,9 @@ More documentation is available in the docs folder:
 - docs/good-first-issues.md
 - docs/faq.md
 - docs/open-mainframe-sandbox-readiness.md
+- docs/v1.2-production-readiness-plan.md
+- docs/production-deployment.md
+- docs/demo-mode.md
 
 ---
 
@@ -452,3 +455,11 @@ See LICENSE.
 ### AI Settings
 
 ![AI Settings](docs/images/ai-settings.png)
+
+### Performance Insights
+
+![Performance Insights](docs/images/performance-insights.png)
+
+### Safety Settings
+
+![Safety Settings](docs/images/safety-settings.png)

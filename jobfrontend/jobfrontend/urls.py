@@ -6,6 +6,7 @@ from jobs import views
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("", lambda request: redirect("job_list"), name="home"),
+    path("api/health", views.health, name="health"),
 
     path("jobs/", views.job_list, name="job_list"),
     path("jobs/<str:jobid>/spool/", views.view_spool, name="view_spool"),
